@@ -183,9 +183,12 @@ public class BinaryHeap<T> {
         insertedMax(current);
     }
     
-    public void insert(T element, int prioridad) {
-        BHNode<T> node = new BHNode(element, prioridad);
-        insertNode(node);
+    private BHNode<T> createNode(T element, int priority) {
+        return new BHNode(element, priority);
+    }
+    
+    public void insert(T element, int priority) {
+        insertNode(createNode(element, priority));
     }
     
     public T extractRoot() {
