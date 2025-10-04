@@ -35,4 +35,9 @@ public class ArrayNode<T> {
         this.next = next;
     }
     
+    @Override
+    public String toString() {
+        return this.element.toString();
+    }
+    
 }
