@@ -7,23 +7,29 @@ package Structures;
 /**
  *
  * @author Miguel
+ * @param <T> Any Object
  */
 public class BHNode<T> {
     
     private T element;
-    private int prioridad;
+    private int priority;
     
-    public BHNode(T element, int prioridad){
+    public BHNode(T element, int priority){
         this.element = element;
-        this.prioridad = prioridad;
+        this.priority = priority;
     }
 
     public T getElement() {
         return element;
     }
 
-    public int getPrioridad() {
-        return prioridad;
+    public int getPriority() {
+        return priority;
+    }
+    
+    @Override
+    public String toString() {
+        return this.element.toString();
     }
     
 }

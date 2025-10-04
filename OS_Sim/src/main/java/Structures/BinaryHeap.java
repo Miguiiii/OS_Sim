@@ -7,12 +7,14 @@ package Structures;
 /**
  *
  * @author Miguel
+ * @param <T> Any Object
  */
 public class BinaryHeap<T> {
     
     private ArrayList<BHNode<T>> heap;
     private int size;
     private int maxSize;
+    private HeapNode<T> test;
 
     public BinaryHeap(int maxSize) {
         this.maxSize = maxSize;
@@ -40,62 +42,54 @@ public class BinaryHeap<T> {
         this.size = size;
     }
     
-    public BHNode getMin() {
-        return getHeap().getElmenetAtIndex(0);
+    public T getMin() {
+        return getHeap().getElmenetAtIndex(0).getElement();
     }
     
-    public boolean containsElement(T element) {
+    public boolean fainsElement(T element) {
         for (int i = 0; i < getSize(); i++) {
-            if (getHeap().getElmenetAtIndex(i).getElement() == element) {
-                return true;
-            }
+            if (getHeap().getElmenetAtIndex(i).getElement() == element) {return true;}
         }
         return false;
     }
     
     public boolean isEmpty() {
-        if (getSize() == 0) {
-            return true;
-        }
-        return false;
+        return getSize() == 0;
     }
     
-    public int parent(int index) {
+    private int parent(int index) {
         return (index - 1) / 2;
     }
     
-    public int leftChild(int index) {
+    private int leftChild(int index) {
         return 2 * index + 1;
     }
     
-    public int rightChild(int index) {
+    private int rightChild(int index) {
         return 2 * index + 2;
     }
     
     private void swap(int pIndex, int cIndex) {
-        ArrayNode anterior, padre, hijo;
-        anterior = padre = hijo = null;
-        int cont = 0;
+        ArrayNode prev, parent, child;
+        prev = parent = child = null;
+        int count = 0;
         Integer pointer = getHeap().getHead();
-        while (cont != cIndex) {
-            if (pIndex != 0 && cont == pIndex - 1) {
-                anterior = getHeap().getArray()[pointer];
-            } if (cont == pIndex) {
-                padre = getHeap().getArray()[pointer];
-            }
+        while (count != cIndex) {
+            if (pIndex != 0 && count == pIndex - 1) {prev = getHeap().getArray()[pointer];}
+            if (count == pIndex) {parent = getHeap().getArray()[pointer];}
             pointer = getHeap().getArray()[pointer].getNext();
-            cont++;
+            count++;
         }
-        hijo = getHeap().getArray()[pointer];
-        pointer = hijo.getNext();
+        child = getHeap().getArray()[pointer];
+        pointer = child.getNext();
         if (pIndex == 0) {
-            hijo.setNext(getHeap().getHead());
-            getHeap().setHead(padre.getNext());
+            child.setNext(getHeap().getHead());
+            getHeap().setHead(parent.getNext());
         } else {
-            hijo.setNext(anterior.getNext());
-            anterior.setNext(padre.getNext());
+            child.setNext(prev.getNext());
+            prev.setNext(parent.getNext());
         }
-        padre.setNext(pointer);
+        parent.setNext(pointer);
     }
     
     public void minHeapify(int index) {
@@ -104,9 +98,9 @@ public class BinaryHeap<T> {
         
         int smallest = index;
         
-        if (lChild < getSize() && getHeap().getElmenetAtIndex(lChild).getPrioridad() < getHeap().getElmenetAtIndex(smallest).getPrioridad()) {
+        if (lChild < getSize() && getHeap().getElmenetAtIndex(lChild).getPriority() < getHeap().getElmenetAtIndex(smallest).getPriority()) {
             smallest = lChild;
-        } if (rChild < getSize() && getHeap().getElmenetAtIndex(rChild).getPrioridad() < getHeap().getElmenetAtIndex(smallest).getPrioridad()) {
+        } if (rChild < getSize() && getHeap().getElmenetAtIndex(rChild).getPriority() < getHeap().getElmenetAtIndex(smallest).getPriority()) {
             smallest = rChild;
         }
         
@@ -123,37 +117,37 @@ public class BinaryHeap<T> {
                 newHeap.insertAtIndex(getHeap().getElmenetAtIndex(i), i);
             }
             setHeap(newHeap);
+            this.maxSize = this.maxSize + 5;
         }
-        BHNode<T> nodo = new BHNode(element, prioridad);
+        BHNode<T> node = new BHNode(element, prioridad);
         int current = size;
-        getHeap().insertFinal(nodo);
+        getHeap().insertFinal(node);
         size++;
         
-        while (current != 0 && getHeap().getElmenetAtIndex(current).getPrioridad() < getHeap().getElmenetAtIndex(parent(current)).getPrioridad()) {
+        while (current != 0 && getHeap().getElmenetAtIndex(current).getPriority() < getHeap().getElmenetAtIndex(parent(current)).getPriority()) {
             swap(parent(current), current);
             current = parent(current);
         }
     }
     
-    public T extractMin() {
+    public T extractRoot() {
         if (isEmpty()) {
-            System.out.println("El montículo está vacío");
+            System.out.println("The Heap is Empty");
             return null;
         }
-        BHNode<T> min = getHeap().getElmenetAtIndex(0);
-        getHeap().deleteBegin();
+        BHNode<T> root = getHeap().deleteBegin();
         size--;
         if (size != 0) {
             getHeap().insertBegin(getHeap().getElmenetAtIndex(size - 1));
             getHeap().deleteFinal();
             minHeapify(0);
         }
-        return min.getElement();
+        return root.getElement();
     }
     
     public T extractElement(BHNode extract) {
         if (isEmpty()) {
-            System.out.println("El monticulo esta vacio");
+            System.out.println("The Heap is Empty");
             return null;
         }
         
@@ -164,11 +158,11 @@ public class BinaryHeap<T> {
 
         while (!getHeap().getElmenetAtIndex(0).equals(extract)) {
             colaElementos.insertFinal(getHeap().getElmenetAtIndex(0).getElement());
-            colaPrioridades.insertFinal(getHeap().getElmenetAtIndex(0).getPrioridad());
-            extractMin();
+            colaPrioridades.insertFinal(getHeap().getElmenetAtIndex(0).getPriority());
+            extractRoot();
             if (getSize() == 0) {break;}
         }
-        if (getSize() != 0) {eliminado = extractMin();}
+        if (getSize() != 0) {eliminado = extractRoot();}
         
         while (colaElementos.getLength() != 0) {
             T newElement = colaElementos.getElmenetAtIndex(0);
@@ -187,6 +181,10 @@ public class BinaryHeap<T> {
     
     public void print() {
         getHeap().print();
+    }
+ 
+    public void printInMemory() {
+        getHeap().printInMemory();
     }
     
 }

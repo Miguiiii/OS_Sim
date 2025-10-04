@@ -45,15 +45,25 @@ public class List<T> implements Iterable<T> {
         return false;
     }
     
+    public Integer findIndexOf(T element) {
+        int count=0;
+        for (T i:this) {
+            if (i == element) {return count;}
+            count++;
+        }
+        System.out.println("Element does not exist in list");
+        return null;
+    }
+    
     public T getElmenetAtIndex(int index) {
         T element = null;
-        int cont = 0;
+        int count = 0;
         for (T i:this) {
-            if (cont == index) {
+            if (count == index) {
                 element = i;
                 break;
             }
-            cont++;
+            count++;
         }
         return element;
     }
@@ -72,15 +82,16 @@ public class List<T> implements Iterable<T> {
     public void insertFinal(T element) {
         if (isEmpty()) {
             insertBegin(element);
-        } else {
-            Node<T> Node = new Node(element);
-            Node pointer = getHead();
-            while (pointer.getNext() != null) {
-                pointer = pointer.getNext();
-            }
-            pointer.setNext(Node);
-            length++;
+            return;
         }
+ 
+        Node<T> Node = new Node(element);
+        Node pointer = getHead();
+        while (pointer.getNext() != null) {
+            pointer = pointer.getNext();
+        }
+        pointer.setNext(Node);
+        length++;
     }
     
     public void insertAtIndex(T element, int index) {
@@ -99,10 +110,10 @@ public class List<T> implements Iterable<T> {
 
         Node<T> Node = new Node(element);
         Node pointer = getHead();
-        int cont = 0;
-        while (cont < index - 1) {
+        int count = 0;
+        while (count < index - 1) {
             pointer = pointer.getNext();
-            cont++;
+            count++;
         }
         Node temp = pointer.getNext();
         Node.setNext(temp);
@@ -111,81 +122,86 @@ public class List<T> implements Iterable<T> {
 
     }
     
-    public Node deleteBegin() {
+    public T deleteBegin() {
         if(isEmpty()) {
-            System.out.println("La lista esta vacia");
+            System.out.println("List is already Empty");
             return null;
-        } else {
-            Node pointer = getHead();
-            setHead(pointer.getNext());
-            pointer.setNext(null);
-            length--;
-            return pointer;
         }
+        
+        Node<T> pointer = getHead();
+        setHead(pointer.getNext());
+        pointer.setNext(null);
+        length--;
+        return pointer.getElement();
+        
     }
     
-    public Node deleteFinal() {
+    public T deleteFinal() {
         if (isEmpty()) {
-            System.out.println("La lista esta vacia");
+            System.out.println("List is already Empty");
             return null;
-        } else if (getLength() == 1) {
-            return deleteBegin();
-        } else {
-            Node pointer = getHead();
-            while (pointer.getNext().getNext() != null) {
-                pointer = pointer.getNext();
-            }
-            Node temp = pointer.getNext();
-            pointer.setNext(null);
-            length--;
-            return temp;
         }
+        if (getLength() == 1) {
+            return deleteBegin();
+        }
+        
+        Node pointer = getHead();
+        while (pointer.getNext().getNext() != null) {
+            pointer = pointer.getNext();
+        }
+        Node<T> temp = pointer.getNext();
+        pointer.setNext(null);
+        length--;
+        return temp.getElement();
+        
     }
     
-    public Node deleteAtIndex(int index) {
+    public T deleteAtIndex(int index) {
         
         if (index == 0) {
             return deleteBegin();
-        } else if (index == getLength()) {
+        }
+        if (index == getLength()) {
             return deleteFinal();
-        } else if (index < getLength()) {
+        }
+        if (index < getLength()) {
             Node pointer = getHead();
             for (int i = 0; i < index - 1; i++) {
                 pointer = pointer.getNext();
             }
-            Node temp = pointer.getNext();
+            Node<T> temp = pointer.getNext();
             pointer.setNext(temp.getNext());
             temp.setNext(null);
             length--;
-            return temp;
-        } else {
-            System.out.println("Index not valid");
-            return null;
+            return temp.getElement();
         }
+        
+        System.out.println("Index not valid");
+        return null;
+        
     }
     
-    public Node deleteElement(T element) {
+    public T deleteElement(T element) {
         
         Node pointer = getHead();
         
         if (pointer.getElement() == element) {
             return deleteBegin();
-        } else {
-            while (pointer.getNext().getElement() != element) {
-                pointer = pointer.getNext();
-                if (pointer.getNext() == null) {
-                    break;
-                }
-            }
+        }
+        
+        while (pointer.getNext().getElement() != element) {
+            pointer = pointer.getNext();
             if (pointer.getNext() == null) {
+                System.out.println("Element does not exist in list");
                 return null;
             }
-            Node temp = pointer.getNext();
-            pointer.setNext(temp.getNext());
-            temp.setNext(null);
-            length--;
-            return temp;
         }
+        
+        Node<T> temp = pointer.getNext();
+        pointer.setNext(temp.getNext());
+        temp.setNext(null);
+        length--;
+        return temp.getElement();
 
     }
     
