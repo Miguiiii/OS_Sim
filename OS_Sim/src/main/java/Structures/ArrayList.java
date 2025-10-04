@@ -190,7 +190,6 @@ public class ArrayList<T> implements Iterable<T> {
         }
     }
 
-
     public T deleteBegin() {
         if(isEmpty()) {
             System.out.println("The list is empty");
