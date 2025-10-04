@@ -14,7 +14,6 @@ public class BinaryHeap<T> {
     private ArrayList<BHNode<T>> heap;
     private int size;
     private int maxSize;
-    private HeapNode<T> test;
 
     public BinaryHeap(int maxSize) {
         this.maxSize = maxSize;
@@ -42,7 +41,7 @@ public class BinaryHeap<T> {
         this.size = size;
     }
     
-    public T getMin() {
+    public T getRoot() {
         return getHeap().getElmenetAtIndex(0).getElement();
     }
     
