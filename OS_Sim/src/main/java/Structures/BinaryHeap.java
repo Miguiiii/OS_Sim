@@ -14,18 +14,24 @@ public class BinaryHeap<T> {
     private ArrayList<BHNode<T>> heap;
     private int size;
     private int maxSize;
+    private boolean isMin;
 
-    public BinaryHeap(int maxSize) {
+    public BinaryHeap(int maxSize, boolean isMin) {
         this.maxSize = maxSize;
         this.size = 0;
         this.heap = new ArrayList(this.maxSize);
+        this.isMin = isMin;
+    }
+    
+    public BinaryHeap(int maxSize){
+        this(maxSize, true);
     }
 
     public ArrayList<BHNode<T>> getHeap() {
         return heap;
     }
 
-    public void setHeap(ArrayList<BHNode<T>> heap) {
+    private void setHeap(ArrayList<BHNode<T>> heap) {
         this.heap = heap;
     }
     
@@ -37,15 +43,23 @@ public class BinaryHeap<T> {
         return maxSize;
     }
 
-    public void setSize(int size) {
-        this.size = size;
+//    public void setSize(int size) {
+//        this.size = size;
+//    }
+    
+    public boolean isMinHeap() {
+        return this.isMin;
+    }
+    
+    public BHNode<T> getRootNode() {
+        return getHeap().getElmenetAtIndex(0);
     }
     
     public T getRoot() {
-        return getHeap().getElmenetAtIndex(0).getElement();
+        return getRootNode().getElement();
     }
     
-    public boolean fainsElement(T element) {
+    public boolean isElementInHeap(T element) {
         for (int i = 0; i < getSize(); i++) {
             if (getHeap().getElmenetAtIndex(i).getElement() == element) {return true;}
         }
@@ -91,7 +105,33 @@ public class BinaryHeap<T> {
         parent.setNext(pointer);
     }
     
-    public void minHeapify(int index) {
+    public void Heapify(int index) {
+        if (isMinHeap()) {
+            minHeapify(index);
+            return;
+        }
+        maxHeapify(index);
+    }
+    
+    private void maxHeapify(int index) {
+        int lChild = leftChild(index);
+        int rChild = rightChild(index);
+        
+        int smallest = index;
+        
+        if (lChild < getSize() && getHeap().getElmenetAtIndex(lChild).getPriority() > getHeap().getElmenetAtIndex(smallest).getPriority()) {
+            smallest = lChild;
+        } if (rChild < getSize() && getHeap().getElmenetAtIndex(rChild).getPriority() > getHeap().getElmenetAtIndex(smallest).getPriority()) {
+            smallest = rChild;
+        }
+        
+        if (smallest != index) {
+            swap(index, smallest);
+            maxHeapify(smallest);
+        }
+    }
+    
+    private void minHeapify(int index) {
         int lChild = leftChild(index);
         int rChild = rightChild(index);
         
@@ -109,7 +149,21 @@ public class BinaryHeap<T> {
         }
     }
     
-    public void insert(T element, int prioridad) {
+    private void insertedMin(int current) {
+        while (current != 0 && getHeap().getElmenetAtIndex(current).getPriority() < getHeap().getElmenetAtIndex(parent(current)).getPriority()) {
+            swap(parent(current), current);
+            current = parent(current);
+        }
+    }
+    
+    private void insertedMax(int current) {
+        while (current != 0 && getHeap().getElmenetAtIndex(current).getPriority() > getHeap().getElmenetAtIndex(parent(current)).getPriority()) {
+            swap(parent(current), current);
+            current = parent(current);
+        }
+    }
+    
+    public void insertNode(BHNode<T> node) {
         if (getSize() == getMaxSize()) {
             ArrayList<BHNode<T>> newHeap = new ArrayList(getMaxSize() + 5);
             for (int i = 0; i < getSize(); i++) {
@@ -118,18 +172,27 @@ public class BinaryHeap<T> {
             setHeap(newHeap);
             this.maxSize = this.maxSize + 5;
         }
-        BHNode<T> node = new BHNode(element, prioridad);
         int current = size;
         getHeap().insertFinal(node);
         size++;
         
-        while (current != 0 && getHeap().getElmenetAtIndex(current).getPriority() < getHeap().getElmenetAtIndex(parent(current)).getPriority()) {
-            swap(parent(current), current);
-            current = parent(current);
+        if (isMinHeap()) {
+            insertedMin(current);
+            return;
         }
+        insertedMax(current);
+    }
+    
+    public void insert(T element, int prioridad) {
+        BHNode<T> node = new BHNode(element, prioridad);
+        insertNode(node);
     }
     
     public T extractRoot() {
+        return extractRootNode().getElement();
+    }
+    
+    public BHNode<T> extractRootNode() {
         if (isEmpty()) {
             System.out.println("The Heap is Empty");
             return null;
@@ -139,11 +202,24 @@ public class BinaryHeap<T> {
         if (size != 0) {
             getHeap().insertBegin(getHeap().getElmenetAtIndex(size - 1));
             getHeap().deleteFinal();
-            minHeapify(0);
+            Heapify(0);
         }
-        return root.getElement();
+        return root;
     }
     
+    public void inverseHeap() {
+        this.isMin = !isMinHeap();
+        ArrayList<BHNode<T>> heapCopy = new ArrayList(getMaxSize());
+        for (int i = 0; i < getSize(); i++) {
+            heapCopy.insertAtIndex(getHeap().getElmenetAtIndex(i), i);
+        }
+        setHeap(new ArrayList(getMaxSize()));
+        for (BHNode<T> i:heapCopy) {
+            insertNode(i);
+        }
+    }
+    
+    @Deprecated
     public T extractElement(BHNode extract) {
         if (isEmpty()) {
             System.out.println("The Heap is Empty");
