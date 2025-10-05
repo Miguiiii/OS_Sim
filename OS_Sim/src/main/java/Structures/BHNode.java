@@ -9,21 +9,23 @@ package Structures;
  * @author Miguel
  * @param <T> Any Object
  */
-public class BHNode<T> {
+public class BHNode<T> implements HeapNode<T> {
     
     private T element;
-    private int priority;
+    private long priority;
     
-    public BHNode(T element, int priority){
+    public BHNode(T element, long priority){
         this.element = element;
         this.priority = priority;
     }
 
+    @Override
     public T getElement() {
         return element;
     }
 
-    public int getPriority() {
+    @Override
+    public long getPriority() {
         return priority;
     }
     
