@@ -193,35 +193,34 @@ public class ArrayList<T> implements Iterable<T> {
     public T deleteBegin() {
         if(isEmpty()) {
             System.out.println("The list is empty");
-        } else {
-            ArrayNode<T> pointer = getArray()[getHead()];
-            Integer temp = pointer.getNext();
-            getArray()[getHead()] = null;
-            setHead(temp);
-            pointer.setNext(null);
-            size--; 
-            return pointer.getElement();
+            return null;
         }
-        return null;
+        
+        ArrayNode<T> pointer = getArray()[getHead()];
+        Integer temp = pointer.getNext();
+        getArray()[getHead()] = null;
+        setHead(temp);
+        pointer.setNext(null);
+        size--; 
+        return pointer.getElement();
     }
 
     public T deleteFinal() {
         if(isEmpty()) {
             System.out.println("The list is empty");
-        } else if (getSize() == 1) {
-            return deleteBegin();
-        } else {
-            ArrayNode pointer = getArray()[getHead()];
-            while (getArray()[pointer.getNext()].getNext() != null) {
-                pointer = getArray()[pointer.getNext()];
-            }
-            ArrayNode<T> temp = getArray()[pointer.getNext()];
-            getArray()[pointer.getNext()] = null;
-            pointer.setNext(null);
-            size--;
-            return temp.getElement();
+            return null;
         }
-        return null;
+        if (getSize() == 1) {return deleteBegin();}
+        
+        ArrayNode pointer = getArray()[getHead()];
+        while (getArray()[pointer.getNext()].getNext() != null) {
+            pointer = getArray()[pointer.getNext()];
+        }
+        ArrayNode<T> temp = getArray()[pointer.getNext()];
+        getArray()[pointer.getNext()] = null;
+        pointer.setNext(null);
+        size--;
+        return temp.getElement();
     }
 
     public T deleteAtIndex(int index) {
@@ -249,6 +248,7 @@ public class ArrayList<T> implements Iterable<T> {
         return null;
     }
     
+    @Deprecated
     public ArrayNode deleteElement(T element) {
         if (isEmpty()) {
             System.out.println("The list is empty");
