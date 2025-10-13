@@ -17,6 +17,7 @@ public class OS_Process {
     private final long maxRunTime;
     private long pile;
     private long program_counter=0;
+    private long totalRunTime=0;
     
     public OS_Process(String name, int id, long birthTime, long maxRunTime, long pile, int priority) {
         this.name = name;
@@ -55,8 +56,24 @@ public class OS_Process {
         return cicle-getBirthTime()-getProgram_counter();
     }
     
+    public long getTimeInSystem() {
+        return getTotalTime()-getProgram_counter();
+    }
+    
     public long getProgram_counter() {
         return program_counter;
+    }
+    
+    public long getTotalTime() {
+        return totalRunTime;
+    }
+    
+    public void setTotalTime(long finalCycle) {
+        if (totalRunTime!=0) {
+            System.out.println("This process's total runtime has already been set");
+            return;
+        }
+        this.totalRunTime = finalCycle-getBirthTime();
     }
     
     @Override

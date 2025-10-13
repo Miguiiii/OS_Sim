@@ -3,25 +3,34 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package OS_Structures;
-
+import Structures.*;
 /**
  *
- * @author sl005
+ * @author Miguel
  */
 public class OperatingSystem {
     private long cycleDuration;
     private boolean isCycleInSeconds = true;
     public static long cycleCounter = 0;
-
+    private ArrayList mainMemory;
+    private ArrayList permMemory;
+    private ReadyList readyProcesses;
+    private ReadyList readySuspendedProcesses;
+    private ArrayList blockedProcesses;
+    private ArrayList blockedSuspendedProcesses;
+    private ArrayList newProcesses;
+    private ProcessNode runningProcess;
+   
+    //Constructor con Argumentos
     public OperatingSystem(boolean isCycleInSeconds, long cycleDuration) {
         if (isCycleInSeconds) {
             this.cycleDuration = cycleDuration*1000;
         } else {
             this.cycleDuration = cycleDuration;
         }
-        this.startSystem();
+        this.isCycleInSeconds=isCycleInSeconds;
     }
-    
+    //Constructor default, inicializa el OS con ciclos de 1 segundo
     public OperatingSystem() {
         this(true, 1);
     }
@@ -29,8 +38,8 @@ public class OperatingSystem {
     public long getCounter() {
         return cycleCounter;
     }
-    
-    private void startSystem() {
+    //Inicializa un hilo que aumenta el contador segun la duración del ciclo
+    public void startSystem() {
         Thread counterThread = new Thread(() -> {
             long cycleCount = 0;
             while (true) {
@@ -52,5 +61,7 @@ public class OperatingSystem {
         counterThread.setDaemon(true); 
         counterThread.start();
     }
+    
+    
     
 }

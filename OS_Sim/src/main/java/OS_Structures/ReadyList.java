@@ -40,11 +40,11 @@ public class ReadyList extends Heap<OS_Process>{
         if (!prev_sched.equals(new_schedule)) {
             setScheduleType(new_schedule);
             ProcessNode.priorityType=new_schedule;
-            reloadHeap();
             switch (new_schedule) {
                 case "Priority", "SN", "SRT", "FeedBack" -> this.isMin = true;
                 case "FIFO", "HRR" -> this.isMin = false;
             }
+            reloadHeap();
         }
     }
     
