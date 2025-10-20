@@ -62,6 +62,12 @@ public class OperatingSystem {
         counterThread.start();
     }
     
+    private void manageSchedule() {
+        
+    }
     
+    private void manageMemory() {
+        
+    }
     
 }
