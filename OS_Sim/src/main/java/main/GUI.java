@@ -3,8 +3,8 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package main;
-
 import OS_Structures.OperatingSystem;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 /**
@@ -14,7 +14,7 @@ import javax.swing.SwingUtilities;
 public class GUI extends javax.swing.JFrame {
 
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(GUI.class.getName());
-    private OperatingSystem os; //comitamelo
+    private OperatingSystem os;
 
     public GUI() {
         initComponents();
@@ -23,13 +23,21 @@ public class GUI extends javax.swing.JFrame {
     public void setOperatingSystem(OperatingSystem os) {
         this.os = os;
     }
+
     public void updateCycleCount(long count) {
         SwingUtilities.invokeLater(() -> {
             cycleLabel.setText("Ciclos hasta el momento: " + count);
         });
     }
     
+    public void addLogMessage(String message) {
+        SwingUtilities.invokeLater(() -> {
+            logTextArea.append(message + "\n");
+            logTextArea.setCaretPosition(logTextArea.getDocument().getLength());
+        });
+    }
     
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -39,70 +47,134 @@ public class GUI extends javax.swing.JFrame {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        sButton = new javax.swing.JButton();
-        msButton = new javax.swing.JButton();
+        jTabbedPane1 = new javax.swing.JTabbedPane();
+        simulatorPanel = new javax.swing.JPanel();
         cycleLabel = new javax.swing.JLabel();
+        durationLabel = new javax.swing.JLabel();
+        durationField = new javax.swing.JTextField();
+        unitComboBox = new javax.swing.JComboBox<>();
+        setDurationButton = new javax.swing.JButton();
+        graphicsPanel = new javax.swing.JPanel();
+        logPanel = new javax.swing.JPanel();
+        logScrollPane = new javax.swing.JScrollPane();
+        logTextArea = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
-        sButton.setText("S");
-        sButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                sButtonActionPerformed(evt);
-            }
-        });
-
-        msButton.setText("MS");
-        msButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                msButtonActionPerformed(evt);
-            }
-        });
-
         cycleLabel.setText("Ciclos hasta el momento: 0");
 
-        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
-        getContentPane().setLayout(layout);
-        layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
+        durationLabel.setText("Duración del Ciclo:");
+
+        durationField.setText("1"); // Valor por defecto
+
+        unitComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Segundos", "Milisegundos" }));
+        unitComboBox.setSelectedItem("Segundos"); // Valor por defecto
+
+        setDurationButton.setText("Aplicar");
+        setDurationButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setDurationButtonActionPerformed(evt);
+            }
+        });
+
+        javax.swing.GroupLayout simulatorPanelLayout = new javax.swing.GroupLayout(simulatorPanel);
+        simulatorPanel.setLayout(simulatorPanelLayout);
+        simulatorPanelLayout.setHorizontalGroup(
+            simulatorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(simulatorPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(simulatorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(cycleLabel)
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(sButton, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(12, 12, 12)
-                        .addComponent(msButton)))
-                .addGap(0, 252, Short.MAX_VALUE))
+                    .addGroup(simulatorPanelLayout.createSequentialGroup()
+                        .addComponent(durationLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(durationField, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(unitComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(setDurationButton)))
+                .addContainerGap(47, Short.MAX_VALUE))
         );
-        layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addContainerGap(247, Short.MAX_VALUE)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(msButton)
-                    .addComponent(sButton))
+        simulatorPanelLayout.setVerticalGroup(
+            simulatorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, simulatorPanelLayout.createSequentialGroup()
+                .addContainerGap(215, Short.MAX_VALUE)
+                .addGroup(simulatorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(durationLabel)
+                    .addComponent(durationField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(unitComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(setDurationButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(cycleLabel)
                 .addContainerGap())
         );
 
+        jTabbedPane1.addTab("Simulador", simulatorPanel);
+
+        javax.swing.GroupLayout graphicsPanelLayout = new javax.swing.GroupLayout(graphicsPanel);
+        graphicsPanel.setLayout(graphicsPanelLayout);
+        graphicsPanelLayout.setHorizontalGroup(
+            graphicsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 395, Short.MAX_VALUE)
+        );
+        graphicsPanelLayout.setVerticalGroup(
+            graphicsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 267, Short.MAX_VALUE)
+        );
+
+        jTabbedPane1.addTab("Graficos", graphicsPanel);
+
+        logPanel.setLayout(new java.awt.BorderLayout());
+
+        logTextArea.setEditable(false);
+        logTextArea.setBackground(new java.awt.Color(0, 0, 0));
+        logTextArea.setForeground(new java.awt.Color(255, 255, 255));
+        logTextArea.setFont(new java.awt.Font("Monospaced", 0, 12)); // Fuente tipo terminal
+        logScrollPane.setViewportView(logTextArea);
+
+        logPanel.add(logScrollPane, java.awt.BorderLayout.CENTER);
+
+        jTabbedPane1.addTab("Log", logPanel);
+
+        javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
+        getContentPane().setLayout(layout);
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jTabbedPane1)
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(jTabbedPane1)
+        );
+
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void sButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sButtonActionPerformed
-
-        if (this.os != null) {
-            this.os.setCycleModeToSeconds();
+    private void setDurationButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setDurationButtonActionPerformed
+        if (this.os == null) {
+            addLogMessage("ERROR: OperatingSystem no está inicializado.");
+            return;
         }
-    }//GEN-LAST:event_sButtonActionPerformed
 
-    private void msButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_msButtonActionPerformed
+        try {
+            long value = Long.parseLong(durationField.getText());
+            String unit = (String) unitComboBox.getSelectedItem();
 
-        if (this.os != null) {
-            this.os.setCycleModeToMilliseconds();
+            if (value <= 0) {
+                 JOptionPane.showMessageDialog(this, "El valor debe ser positivo.", "Error de entrada", JOptionPane.WARNING_MESSAGE);
+                 durationField.setText("1");
+                 addLogMessage("ERROR: El valor de duración debe ser positivo.");
+                 return;
+            }
+
+            this.os.setCycleDuration(value, unit);
+
+        } catch (NumberFormatException e) {
+            addLogMessage("ERROR: Entrada inválida. Se requiere un número entero.");
+            JOptionPane.showMessageDialog(this, "Por favor, ingrese un número válido.", "Error de formato", JOptionPane.ERROR_MESSAGE);
+            durationField.setText("1"); 
         }
-    }//GEN-LAST:event_msButtonActionPerformed
+    }//GEN-LAST:event_setDurationButtonActionPerformed
 
     /**
      * @param args the command line arguments
@@ -124,17 +196,20 @@ public class GUI extends javax.swing.JFrame {
             logger.log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
-
-        /* Create and display the form */
-        // Nota: Si ejecutas este main() directamente, los botones no harán nada
-        // porque la instancia 'os' será nula.
-        // Debes ejecutar desde main.java para que funcione.
         java.awt.EventQueue.invokeLater(() -> new GUI().setVisible(true));
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel cycleLabel;
-    private javax.swing.JButton msButton;
-    private javax.swing.JButton sButton;
+    private javax.swing.JTextField durationField;
+    private javax.swing.JLabel durationLabel;
+    private javax.swing.JPanel graphicsPanel;
+    private javax.swing.JTabbedPane jTabbedPane1;
+    private javax.swing.JPanel logPanel;
+    private javax.swing.JScrollPane logScrollPane;
+    private javax.swing.JTextArea logTextArea;
+    private javax.swing.JButton setDurationButton;
+    private javax.swing.JPanel simulatorPanel;
+    private javax.swing.JComboBox<String> unitComboBox;
     // End of variables declaration//GEN-END:variables
 }
