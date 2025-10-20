@@ -13,6 +13,7 @@ public class OperatingSystem {
     private boolean isCycleInSeconds = true;
     public static long cycleCounter = 0;
     private String schedule = "Priority";
+    private long memorySpace;
     private ArrayList mainMemory;
     private ArrayList permMemory;
     private ReadyList readyProcesses;
@@ -62,7 +63,14 @@ public class OperatingSystem {
         counterThread.setDaemon(true); 
         counterThread.start();
     }
-    
+
+    public long getMemorySpace() {
+        return memorySpace;
+    }
+
+    private void setMemorySpace(long memorySpace) {
+        this.memorySpace = memorySpace;
+    }
     
     //CAMBIO DE PLANIFICACION
     //PROVICIONAL
