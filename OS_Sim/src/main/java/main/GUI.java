@@ -4,6 +4,7 @@
  */
 package main;
 
+import OS_Structures.OperatingSystem;
 import javax.swing.SwingUtilities;
 
 /**
@@ -13,22 +14,22 @@ import javax.swing.SwingUtilities;
 public class GUI extends javax.swing.JFrame {
 
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(GUI.class.getName());
-    private volatile long cycleDuration = 1000; 
+    private OperatingSystem os; //comitamelo
+
     public GUI() {
         initComponents();
     }
     
+    public void setOperatingSystem(OperatingSystem os) {
+        this.os = os;
+    }
     public void updateCycleCount(long count) {
         SwingUtilities.invokeLater(() -> {
             cycleLabel.setText("Ciclos hasta el momento: " + count);
         });
     }
     
-    public long getCycleDuration() {
-        return this.cycleDuration;
-    }
-
-
+    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -90,11 +91,17 @@ public class GUI extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void sButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sButtonActionPerformed
-        this.cycleDuration = 1000;
+
+        if (this.os != null) {
+            this.os.setCycleModeToSeconds();
+        }
     }//GEN-LAST:event_sButtonActionPerformed
 
     private void msButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_msButtonActionPerformed
-        this.cycleDuration = 1;
+
+        if (this.os != null) {
+            this.os.setCycleModeToMilliseconds();
+        }
     }//GEN-LAST:event_msButtonActionPerformed
 
     /**
@@ -119,6 +126,9 @@ public class GUI extends javax.swing.JFrame {
         //</editor-fold>
 
         /* Create and display the form */
+        // Nota: Si ejecutas este main() directamente, los botones no harán nada
+        // porque la instancia 'os' será nula.
+        // Debes ejecutar desde main.java para que funcione.
         java.awt.EventQueue.invokeLater(() -> new GUI().setVisible(true));
     }
 
