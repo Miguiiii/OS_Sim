@@ -5,6 +5,7 @@
 package OS_Structures;
 import Structures.*;
 import main.GUI;
+import main.Inicio;
 import java.util.logging.Logger; 
 
 /**
@@ -13,8 +14,6 @@ import java.util.logging.Logger;
  */
 public class OperatingSystem {
     
-    // El logger original se puede mantener para logs internos si se desea,
-    // pero los logs para el usuario ahora irán a la GUI.
     private static final Logger logger = Logger.getLogger(OperatingSystem.class.getName());
     
     private volatile long cycleDuration;
@@ -32,16 +31,33 @@ public class OperatingSystem {
     private ProcessNode runningProcess;
     private GUI ventana;
     
-    // Campo para mantener una referencia al hilo
     private Thread counterThread;
     
     public OperatingSystem() {
         this.isCycleInSeconds = true;
         this.cycleDuration = 1000; 
-        this.ventana = new GUI();
-        this.ventana.setOperatingSystem(this); 
+
     }
-    
+
+    public void boot() {
+        Inicio inicioDialog = new Inicio(null, true);
+        inicioDialog.setLocationRelativeTo(null);
+        inicioDialog.setVisible(true); 
+
+        if (inicioDialog.isStarted()) {
+            setMemorySpace(inicioDialog.getMemorySpace());
+            setCycleDuration(inicioDialog.getCycleDuration(), inicioDialog.getUnit());
+            String initialSchedule = inicioDialog.getSchedule();
+            this.setScheduleType(initialSchedule); 
+            this.ventana = new GUI();
+            this.ventana.setOperatingSystem(this); 
+            this.startSystem();
+            
+        } else {
+            System.exit(0);
+        }
+    }
+
     public long getCounter() {
         return cycleCounter;
     }
@@ -57,15 +73,13 @@ public class OperatingSystem {
             newDurationInMs = value;
             newIsCycleInSeconds = false;
         }
-        
         if (newDurationInMs < 1) {
             newDurationInMs = 1;
-            // Modificado: Enviar a la GUI
-            ventana.addLogMessage("ADVERTENCIA: La duración solicitada era < 1ms. Se ha establecido a 1ms.");
+            if (ventana != null && ventana.isVisible()) {
+                ventana.addLogMessage("ADVERTENCIA: La duración solicitada era < 1ms. Se ha establecido a 1ms.");
+            }
         }
-        
-        if (newDurationInMs == this.cycleDuration) {
-            // Modificado: Enviar a la GUI
+        if (newDurationInMs == this.cycleDuration && ventana != null && ventana.isVisible()) {
             ventana.addLogMessage("---> Intento de aplicar la misma duración. No se interrumpe el ciclo.");
             return;
         }
@@ -73,8 +87,9 @@ public class OperatingSystem {
         this.cycleDuration = newDurationInMs;
         this.isCycleInSeconds = newIsCycleInSeconds;
         
-        // Modificado: Enviar a la GUI
-        ventana.addLogMessage("---> Duración del ciclo establecida a: " + value + " " + unit + " (" + this.cycleDuration + "ms)");
+        if (ventana != null && ventana.isVisible()) {
+            ventana.addLogMessage("---> Duración del ciclo establecida a: " + value + " " + unit + " (" + this.cycleDuration + "ms)");
+        }
         
         if (this.counterThread != null && this.counterThread.isAlive()) {
             this.counterThread.interrupt();
@@ -91,23 +106,35 @@ public class OperatingSystem {
                     ventana.updateCycleCount(cycleCounter);
 
                 } catch (InterruptedException e) {
-                    // Modificado: Enviar a la GUI
                     ventana.addLogMessage("---> Ciclo interrumpido para aplicar nueva duración.");
                 }
             }
         });
         this.counterThread.setDaemon(true); 
         this.counterThread.start();
-        
         ventana.setVisible(true);
         ventana.setLocationRelativeTo(null);
+        ventana.addLogMessage("Sistema iniciado. Espacio de memoria total: " + this.memorySpace + " KB.");
+        ventana.addLogMessage("Algoritmo de planificación: " + this.schedule);
+        
+        long initialValue;
+        String initialUnit;
+        if (this.isCycleInSeconds) {
+            initialValue = this.cycleDuration / 1000;
+            initialUnit = "Segundos";
+        } else {
+            initialValue = this.cycleDuration;
+            initialUnit = "Milisegundos";
+        }
+        ventana.setInitialDuration(initialValue, initialUnit);
+        ventana.setInitialSchedule(this.schedule);
     }
 
     public long getMemorySpace() {
         return memorySpace;
     }
 
-    private void setMemorySpace(long memorySpace) {
+    public void setMemorySpace(long memorySpace) {
         this.memorySpace = memorySpace;
     }
     
@@ -123,13 +150,23 @@ public class OperatingSystem {
         };
         if (!prev_sched.equals(new_schedule)) {
             setScheduleType(new_schedule);
+            
+
             ProcessNode.priorityType=new_schedule;
             this.readyProcesses.switchSchedule(new_schedule);
             this.readySuspendedProcesses.switchSchedule(new_schedule);
+            
+            if (ventana != null && ventana.isVisible()) {
+                ventana.addLogMessage("ALGORITMO CAMBIADO: De " + prev_sched + " a " + new_schedule);
+            }
+        } else {
+            if (ventana != null && ventana.isVisible()) {
+                ventana.addLogMessage("---> Algoritmo de planificación ya es " + new_schedule + ". No se aplica cambio.");
+            }
         }
     }
     
-    private void setScheduleType(String type) {
+    public void setScheduleType(String type) {
         this.schedule = type;
     }
     

@@ -38,6 +38,21 @@ public class GUI extends javax.swing.JFrame {
     }
     
 
+    public void setInitialDuration(long duration, String unit) {
+        SwingUtilities.invokeLater(() -> {
+            durationField.setText(String.valueOf(duration));
+            unitComboBox.setSelectedItem(unit);
+        });
+    }
+    
+
+    public void setInitialSchedule(String schedule) {
+        SwingUtilities.invokeLater(() -> {
+            scheduleComboBox.setSelectedItem(schedule);
+        });
+    }
+    
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -54,6 +69,9 @@ public class GUI extends javax.swing.JFrame {
         durationField = new javax.swing.JTextField();
         unitComboBox = new javax.swing.JComboBox<>();
         setDurationButton = new javax.swing.JButton();
+        scheduleLabel = new javax.swing.JLabel();
+        scheduleComboBox = new javax.swing.JComboBox<>();
+        setScheduleButton = new javax.swing.JButton();
         graphicsPanel = new javax.swing.JPanel();
         logPanel = new javax.swing.JPanel();
         logScrollPane = new javax.swing.JScrollPane();
@@ -65,15 +83,31 @@ public class GUI extends javax.swing.JFrame {
 
         durationLabel.setText("Duración del Ciclo:");
 
-        durationField.setText("1"); // Valor por defecto
+        durationField.setText("1");
 
         unitComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Segundos", "Milisegundos" }));
-        unitComboBox.setSelectedItem("Segundos"); // Valor por defecto
+        unitComboBox.setSelectedItem("Segundos");
+        unitComboBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                unitComboBoxActionPerformed(evt);
+            }
+        });
 
         setDurationButton.setText("Aplicar");
         setDurationButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 setDurationButtonActionPerformed(evt);
+            }
+        });
+
+        scheduleLabel.setText("Algoritmo Planificación:");
+
+        scheduleComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Priority", "FIFO", "RR", "SN", "SRT", "HRR", "FeedBack" }));
+
+        setScheduleButton.setText("Aplicar");
+        setScheduleButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                setScheduleButtonActionPerformed(evt);
             }
         });
 
@@ -92,13 +126,24 @@ public class GUI extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(unitComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(setDurationButton)))
+                        .addComponent(setDurationButton))
+                    .addGroup(simulatorPanelLayout.createSequentialGroup()
+                        .addComponent(scheduleLabel)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(scheduleComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(setScheduleButton)))
                 .addContainerGap(47, Short.MAX_VALUE))
         );
         simulatorPanelLayout.setVerticalGroup(
             simulatorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, simulatorPanelLayout.createSequentialGroup()
-                .addContainerGap(215, Short.MAX_VALUE)
+                .addContainerGap(186, Short.MAX_VALUE)
+                .addGroup(simulatorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(scheduleLabel)
+                    .addComponent(scheduleComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(setScheduleButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(simulatorPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(durationLabel)
                     .addComponent(durationField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -129,7 +174,7 @@ public class GUI extends javax.swing.JFrame {
         logTextArea.setEditable(false);
         logTextArea.setBackground(new java.awt.Color(0, 0, 0));
         logTextArea.setForeground(new java.awt.Color(255, 255, 255));
-        logTextArea.setFont(new java.awt.Font("Monospaced", 0, 12)); // Fuente tipo terminal
+        logTextArea.setFont(new java.awt.Font("Monospaced", 0, 12)); 
         logScrollPane.setViewportView(logTextArea);
 
         logPanel.add(logScrollPane, java.awt.BorderLayout.CENTER);
@@ -176,6 +221,21 @@ public class GUI extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_setDurationButtonActionPerformed
 
+    private void unitComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_unitComboBoxActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_unitComboBoxActionPerformed
+
+    private void setScheduleButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                  
+        if (this.os == null) {
+            addLogMessage("ERROR: OperatingSystem no está inicializado.");
+            return;
+        }
+        
+        String selectedSchedule = (String) scheduleComboBox.getSelectedItem();
+        this.os.setScheduleType(selectedSchedule);
+    }
+
+
     /**
      * @param args the command line arguments
      */
@@ -196,7 +256,9 @@ public class GUI extends javax.swing.JFrame {
             logger.log(java.util.logging.Level.SEVERE, null, ex);
         }
         //</editor-fold>
+        
         java.awt.EventQueue.invokeLater(() -> new GUI().setVisible(true));
+  
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -208,6 +270,9 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JPanel logPanel;
     private javax.swing.JScrollPane logScrollPane;
     private javax.swing.JTextArea logTextArea;
+    private javax.swing.JComboBox<String> scheduleComboBox;
+    private javax.swing.JLabel scheduleLabel;
+    private javax.swing.JButton setScheduleButton;
     private javax.swing.JButton setDurationButton;
     private javax.swing.JPanel simulatorPanel;
     private javax.swing.JComboBox<String> unitComboBox;
