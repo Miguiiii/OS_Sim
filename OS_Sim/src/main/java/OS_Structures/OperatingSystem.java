@@ -32,7 +32,7 @@ public class OperatingSystem {
         this.isCycleInSeconds = true;
         this.cycleDuration = 1000; 
         this.ventana = new GUI();
-        this.ventana.setOperatingSystem(this);
+        this.ventana.setOperatingSystem(this); 
     }
     
     public long getCounter() {
