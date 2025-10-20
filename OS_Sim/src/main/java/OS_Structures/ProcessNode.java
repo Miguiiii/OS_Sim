@@ -13,7 +13,7 @@ public class ProcessNode implements HeapNode<OS_Process>{
     private OS_Process element;
     public static String priorityType = "Priority";
     
-    private long cicleCounter=561132421; //PLACEHOLDER FOR THE GLOBAL CICLECOUNTER FOR TESTS PURPOSES
+    //private long cicleCounter=561132421; //PLACEHOLDER FOR THE GLOBAL CICLECOUNTER FOR TESTS PURPOSES
     
     public ProcessNode(OS_Process element) {
         this.element = element;
@@ -27,10 +27,10 @@ public class ProcessNode implements HeapNode<OS_Process>{
     @Override
     public long getPriority() {
         return switch (getPriorityType()) {
-            case "FIFO" -> getElement().getTimeInSystem(cicleCounter);
+            case "FIFO" -> getElement().getTimeInSystem(OperatingSystem.cycleCounter);
             case "SN" -> getElement().getMaxRunTime();
             case "SRT" -> getElement().getMaxRunTime()-getElement().getProgram_counter();
-            case "HRR" -> (getElement().getTimeInSystem(cicleCounter)/getElement().getMaxRunTime())-1;
+            case "HRR" -> (getElement().getTimeInSystem(OperatingSystem.cycleCounter)/getElement().getMaxRunTime())-1;
             case "FeedBack" -> getElement().getProgram_counter()/getElement().getMaxRunTime();
             default -> getElement().getPriority();
         };
@@ -38,6 +38,12 @@ public class ProcessNode implements HeapNode<OS_Process>{
     
     public String getPriorityType() {
         return ProcessNode.priorityType;
+    }
+    
+    public OS_Process endProcess() {
+        OS_Process proc = getElement();
+        proc.setTotalTime(OperatingSystem.cycleCounter);
+        return getElement();
     }
     
     @Override
