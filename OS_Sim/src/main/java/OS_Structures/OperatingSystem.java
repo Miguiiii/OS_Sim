@@ -4,13 +4,19 @@
  */
 package OS_Structures;
 import Structures.*;
+import main.GUI;
+import java.util.logging.Logger; 
+
 /**
  *
  * @author Miguel
  */
 public class OperatingSystem {
-    private long cycleDuration;
-    private boolean isCycleInSeconds = true;
+    
+    private static final Logger logger = Logger.getLogger(OperatingSystem.class.getName());
+    
+    private volatile long cycleDuration;
+    private volatile boolean isCycleInSeconds;
     public static long cycleCounter = 0;
     private ArrayList mainMemory;
     private ArrayList permMemory;
@@ -20,37 +26,39 @@ public class OperatingSystem {
     private ArrayList blockedSuspendedProcesses;
     private ArrayList newProcesses;
     private ProcessNode runningProcess;
-   
-    //Constructor con Argumentos
-    public OperatingSystem(boolean isCycleInSeconds, long cycleDuration) {
-        if (isCycleInSeconds) {
-            this.cycleDuration = cycleDuration*1000;
-        } else {
-            this.cycleDuration = cycleDuration;
-        }
-        this.isCycleInSeconds=isCycleInSeconds;
-    }
-    //Constructor default, inicializa el OS con ciclos de 1 segundo
+    private GUI ventana;
+    
     public OperatingSystem() {
-        this(true, 1);
+        this.isCycleInSeconds = true;
+        this.cycleDuration = 1000; 
+        this.ventana = new GUI();
+        this.ventana.setOperatingSystem(this);
     }
     
     public long getCounter() {
         return cycleCounter;
     }
-    //Inicializa un hilo que aumenta el contador segun la duración del ciclo
+    
+    public void setCycleModeToSeconds() {
+        this.isCycleInSeconds = true;
+        this.cycleDuration = 1000;
+        logger.info("Duración del ciclo establecida a 1 segundo");
+    }
+    
+    public void setCycleModeToMilliseconds() {
+        this.isCycleInSeconds = false;
+        this.cycleDuration = 1;
+        logger.info("Duración del ciclo establecida a 1 milisegundo");
+    }
+    
     public void startSystem() {
         Thread counterThread = new Thread(() -> {
-            long cycleCount = 0;
             while (true) {
-                cycleCount++;
-                //Update ventana comentado porque falta reimplementarlo correctamente
-                //ventana.updateCycleCount(cycleCount);
+                cycleCounter++;               
+                ventana.updateCycleCount(cycleCounter);
 
                 try {
-                    //Obtener duracion de ciclo desde ventana comentado porque se busca obtenerlo de otro modo
-                    //long duration = ventana.getCycleDuration();
-                    Thread.sleep(cycleDuration);
+                    Thread.sleep(this.cycleDuration);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     System.err.println("Hilo del contador interrumpido");
@@ -60,8 +68,8 @@ public class OperatingSystem {
         });
         counterThread.setDaemon(true); 
         counterThread.start();
+        
+        ventana.setVisible(true);
+        ventana.setLocationRelativeTo(null);
     }
-    
-    
-    
 }
