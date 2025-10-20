@@ -12,6 +12,7 @@ public class OperatingSystem {
     private long cycleDuration;
     private boolean isCycleInSeconds = true;
     public static long cycleCounter = 0;
+    private String schedule = "Priority";
     private ArrayList mainMemory;
     private ArrayList permMemory;
     private ReadyList readyProcesses;
@@ -60,6 +61,37 @@ public class OperatingSystem {
         });
         counterThread.setDaemon(true); 
         counterThread.start();
+    }
+    
+    
+    //CAMBIO DE PLANIFICACION
+    //PROVICIONAL
+    //EJEMPLO DE COMO SE MANEJA EN CLASES INTERNAS DE COLA DE LISTOS Y NODO DE PROCESO
+    public void switchSchedule(String schedule) {
+        String prev_sched = getScheduleType();
+        String new_schedule;
+        new_schedule = switch (schedule) {
+            case "Priority", "FIFO", "RR", "SN", "SRT", "HRR", "FeedBack" -> schedule;
+            default -> "Priority";
+        };
+        if (!prev_sched.equals(new_schedule)) {
+            setScheduleType(new_schedule);
+            ProcessNode.priorityType=new_schedule;
+            this.readyProcesses.switchSchedule(new_schedule);
+            this.readySuspendedProcesses.switchSchedule(new_schedule);
+        }
+    }
+    
+    private void setScheduleType(String type) {
+        this.schedule = type;
+    }
+    
+    public String getScheduleType() {
+        return this.schedule;
+    }
+    
+    private void runProcess() {
+        
     }
     
     private void manageSchedule() {
