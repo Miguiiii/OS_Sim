@@ -18,6 +18,7 @@ public class OS_Process {
     private long pile;
     private long program_counter=0;
     private long totalRunTime=0;
+    private int state;
     
     public OS_Process(String name, int id, long birthTime, long maxRunTime, long pile, int priority) {
         this.name = name;
@@ -67,6 +68,15 @@ public class OS_Process {
     public long getTotalTime() {
         return totalRunTime;
     }
+    
+    public long getPile(){
+        return pile;
+    }
+    
+    public int getState(){
+        return state;
+    }
+    
     
     public void setTotalTime(long finalCycle) {
         if (totalRunTime!=0) {
