@@ -237,6 +237,14 @@ public class ArrayList<T> implements Iterable<T> {
         return null;
     }
     
+    public T deleteAtRealIndex(int index) {
+        if (index < getArray().length) {
+            ArrayNode<T> element = getArray()[index];
+            return element.getElement();
+        }
+        return null;
+    }
+    
     @Deprecated
     public ArrayNode deleteElement(T element) {
         if (isEmpty()) {

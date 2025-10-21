@@ -44,6 +44,35 @@ public class OperatingSystem {
     private Semaphore blockSuspSem;
     private Semaphore newSem;
     
+    private class ThreadIO implements Runnable {
+
+        private OS_Process process;
+        private long currentDuration;
+        private long pileIO;
+        
+        public ThreadIO(OS_Process process) {
+            this.process = process;
+        }
+        
+        @Override
+        public void run() {
+            Thread IO = new Thread(()->{
+            try {
+                Thread.sleep(pileIO*this.currentDuration);
+            } catch (InterruptedException e) {
+                // Modificado: Enviar a la GUI
+                ventana.addLogMessage("---> Proceso interrumpido");
+            }
+        });
+            IO.setDaemon(true);
+            IO.start();
+            while (IO.isAlive()) {
+                if ()
+            }
+        }
+        
+    }
+    
     // Campo para mantener una referencia al hilo
     private Thread counterThread;
     
@@ -113,6 +142,7 @@ public class OperatingSystem {
     }
     
     public void startSystem() {
+        Runnable p = () -> {};
         this.counterThread = new Thread(() -> {
             while (true) {
                 try {
@@ -227,14 +257,23 @@ public class OperatingSystem {
             if (currentDuration == getCycleDuration() && currentSchedule.equals(getScheduleType()) && !("SRT".equals(currentSchedule) && lastSizeReady != this.readyProcesses.getSize())) {
                 continue;
             }
+            //Poner aquí Logs dependiendo de la razon de interrupcion
+            
+            /*
+            DUDA: Al interrumpirse un proceso por cambio de duracion de ciclo o de planificacion
+            se deja que el proceso se interrumpe por completo y que se regrese a Listos
+            o que en esos dos casos se resuma su ejecucion pero ajustado a la nueva duracion del ciclo?????
+            */
             long endCycle = getCounter();
             running.interrupt();
-            p.setProgram_counter(p.getProgram_counter()+endCycle-startCycle);
-            this.isInKernel = true;
-            return p;
+            long newRunTime = endCycle-startCycle;
+            if (newRunTime > runTime) {
+                break;
+            }
+            runFor = newRunTime;
         }
         
-        p.setProgram_counter(p.getProgram_counter()+runTime);
+        p.setProgram_counter(p.getProgram_counter()+runFor);
         this.isInKernel = true;
         return p;
     }
@@ -248,6 +287,14 @@ public class OperatingSystem {
     
     private void startProcessIO(OS_Process process) {
         Thread IOThread = new Thread(() -> {
+            long currentDuration = getCycleDuration();
+            OS_Process p = process;
+            long IOLeft = p.getPileIO();
+            Thread IO = new Thread(() -> {
+                Thread.sleep(IOLeft);
+            });
+            long startCycle = getCounter();
+            long endCycle = getCounter();
             
         });
         IOThread.setDaemon(true);
