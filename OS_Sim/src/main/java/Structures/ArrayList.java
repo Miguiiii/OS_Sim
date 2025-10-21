@@ -22,6 +22,10 @@ public class ArrayList<T> implements Iterable<T> {
         this.size = 0;
         this.array = new ArrayNode[0];
     }
+    
+    public ArrayList() {
+        this(10);
+    }
 
     public Integer getHead() {
         return head;
@@ -79,7 +83,18 @@ public class ArrayList<T> implements Iterable<T> {
         return -1;
     }
     
-    public void insertBegin(T element) {
+    public void resize(int extraSpace) {
+        ArrayNode<T>[] newArray = new ArrayNode[getSize()+extraSpace];
+        for (int i = 0; i < getSize(); i++) {
+            newArray[i]=getArray()[i];
+        }
+        setArray(newArray);
+        if (getSize()==getMaxSize()) {
+            this.maxSize = this.maxSize + extraSpace;
+        }
+    }
+    
+    public int insertBegin(T element) {
         ArrayNode<T> nodo = new ArrayNode(element);
         if (isEmpty()) {
             if (getArray().length == 0) {
@@ -87,106 +102,80 @@ public class ArrayList<T> implements Iterable<T> {
                 getArray()[0] = nodo;
                 setHead(0);
                 size++;
-                return;
+                return 0;
             }
         } else if (getSize() == getMaxSize()) {
-            System.out.println("Max Array size reached");
-            return;
+            resize(10);
+            return insertBegin(element);
         }
         int position = searchSpace();
         if (position != -1) {
             nodo.setNext(getHead());
             getArray()[position] = nodo;
             setHead(position);
+            size++;
+            return position;
         } else {
-            ArrayNode[] newArray = new ArrayNode[getSize() + 1];
-            for (int i = 0; i < getSize(); i++) {
-                newArray[i] = getArray()[i];
-            }
-            nodo.setNext(getHead());
-            setHead(newArray.length - 1);
-            newArray[newArray.length - 1] = nodo;
-            setArray(newArray);
+            resize(1);
+            return insertBegin(element);
         }
-        size++;
-        
     }
     
-    public void insertFinal(T element) {
+    public int insertFinal(T element) {
         if (isEmpty()) {
-            insertBegin(element);
+            return insertBegin(element);
         } else if (getSize() == getMaxSize()) {
-            System.out.println("Max Array size reached");
-        } else {
-            ArrayNode<T> nodo = new ArrayNode(element);
-            int position = searchSpace();
-            if (position != -1) {
-                int pointer = getHead();
-                while (getArray()[pointer].getNext() != null) {
-                    pointer = getArray()[pointer].getNext();
-                }
-                getArray()[position] = nodo;
-                getArray()[pointer].setNext(position);
-            } else {
-                ArrayNode[] newArray = new ArrayNode[getSize() + 1];
-                for (int i = 0; i < getSize(); i++) {
-                    newArray[i] = getArray()[i];
-                }
-                newArray[newArray.length - 1] = nodo;
-                setArray(newArray);
-                int pointer = getHead();
-                while (getArray()[pointer].getNext() != null) {
-                    pointer = getArray()[pointer].getNext();
-                }
-                getArray()[pointer].setNext(newArray.length - 1);
+            resize(10);
+            return insertFinal(element);
+        }
+        ArrayNode<T> nodo = new ArrayNode(element);
+        int position = searchSpace();
+        if (position != -1) {
+            int pointer = getHead();
+            while (getArray()[pointer].getNext() != null) {
+                pointer = getArray()[pointer].getNext();
             }
+            getArray()[position] = nodo;
+            getArray()[pointer].setNext(position);
             size++;
+            return position;
+        } else {
+            resize(1);
+            return insertFinal(element);
         }
     }
 
-    public void insertAtIndex(T element, int index) {
+    public int insertAtIndex(T element, int index) {
         ArrayNode nodo = new ArrayNode(element);
         if (isEmpty()) {
-            insertBegin(element);
+            return insertBegin(element);
         } else if(getSize() == getMaxSize()) {
-            System.out.println("Max Array size reached");
-        } else if(index <= getArray().length) {
-            int position = searchSpace();
-            if (position != -1) {
-                getArray()[position] = nodo;
-                int cont = 0;
-                int pointer = getHead();
-                while (cont < index -1) {
-                    pointer = getArray()[pointer].getNext();
-                    cont++;
-                }
-                if (getArray()[pointer].getNext() != null) {
-                    int temp = getArray()[pointer].getNext();
-                    getArray()[position].setNext(temp);
-                }
-                getArray()[pointer].setNext(position);
-            } else {
-                ArrayNode[] newArray = new ArrayNode[getSize() + 1];
-                for (int i = 0; i < getSize(); i++) {
-                    newArray[i] = getArray()[i];
-                }
-                newArray[newArray.length - 1] = nodo;
-                setArray(newArray);
-                int cont = 0;
-                int pointer = getHead();
-                while (cont < index -1) {
-                    pointer = getArray()[pointer].getNext();
-                    cont++;
-                }
-                if (getArray()[pointer].getNext() != null) {
-                    int temp = getArray()[pointer].getNext();
-                    getArray()[newArray.length - 1].setNext(temp);
-                }
-                getArray()[pointer].setNext(newArray.length - 1);
-            }
-            size++;
-        } else {
+            resize(10);
+            return insertAtIndex(element, index);
+        }
+        if(index > getArray().length) {
             System.out.println("Invalid index");
+            return -1;
+        }
+        int position = searchSpace();
+        if (position != -1) {
+            getArray()[position] = nodo;
+            int cont = 0;
+            int pointer = getHead();
+            while (cont < index -1) {
+                pointer = getArray()[pointer].getNext();
+                cont++;
+            }
+            if (getArray()[pointer].getNext() != null) {
+                int temp = getArray()[pointer].getNext();
+                getArray()[position].setNext(temp);
+            }
+            getArray()[pointer].setNext(position);
+            size++;
+            return position;
+        } else {
+            resize(1);
+            return insertAtIndex(element, index);
         }
     }
 
