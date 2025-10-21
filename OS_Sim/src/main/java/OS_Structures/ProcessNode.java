@@ -40,12 +40,6 @@ public class ProcessNode implements HeapNode<OS_Process>{
         return ProcessNode.priorityType;
     }
     
-    public OS_Process endProcess() {
-        OS_Process proc = getElement();
-        proc.setTotalTime(OperatingSystem.cycleCounter);
-        return getElement();
-    }
-    
     @Override
     public String toString() {
         return this.element.toString();

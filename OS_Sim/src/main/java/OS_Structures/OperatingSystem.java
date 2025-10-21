@@ -6,6 +6,7 @@ package OS_Structures;
 import Structures.*;
 import java.time.Duration;
 import java.util.concurrent.Semaphore;
+import java.util.logging.Level;
 import main.GUI;
 import java.util.logging.Logger; 
 
@@ -26,16 +27,22 @@ public class OperatingSystem {
     private long quantum = 1;
     private boolean isInKernel = true;
     private long memorySpace;
-    private ArrayList mainMemory;
-    private ArrayList permMemory;
+    private ArrayList<OS_Process> mainMemory;
+    private ArrayList<OS_Process> permMemory;
     private ReadyList readyProcesses;
     private ReadyList readySuspendedProcesses;
-    private ArrayList blockedProcesses;
-    private ArrayList blockedSuspendedProcesses;
-    private ArrayList newProcesses;
+    private ArrayList<OS_Process> blockedProcesses;
+    private ArrayList<OS_Process> blockedSuspendedProcesses;
+    private ArrayList<OS_Process> newProcesses;
     private ProcessNode runningProcess;
+    private ArrayList<OS_Process> exitProcesses;
+    private ArrayList<OS_Process> processTable;
     private GUI ventana;
     private Semaphore readySem;
+    private Semaphore readySuspSem;
+    private Semaphore blockSem;
+    private Semaphore blockSuspSem;
+    private Semaphore newSem;
     
     // Campo para mantener una referencia al hilo
     private Thread counterThread;
@@ -44,6 +51,21 @@ public class OperatingSystem {
         this.isCycleInSeconds = true;
         this.cycleDuration = 1000; 
         this.ventana = new GUI();
+        mainMemory = new ArrayList(20);
+        permMemory = new ArrayList(20);
+        readyProcesses = new ReadyList(20);
+        readySuspendedProcesses = new ReadyList(20);
+        blockedProcesses = new ArrayList(20);
+        blockedSuspendedProcesses = new ArrayList(20);
+        newProcesses = new ArrayList(20);
+        runningProcess = null;
+        exitProcesses = new ArrayList(20);
+        processTable = new ArrayList(20);
+        readySem = new Semaphore(1);
+        readySuspSem = new Semaphore(1);
+        blockSem = new Semaphore(1);
+        blockSuspSem = new Semaphore(1);
+        newSem = new Semaphore(1);
         this.ventana.setOperatingSystem(this); 
     }
     
@@ -121,22 +143,49 @@ public class OperatingSystem {
         this.memorySpace = memorySpace;
     }
     
+    public void setQuantum(long q) {
+        this.quantum = q;
+    }
+    
+    public long getQuantum() {
+        return quantum;
+    }
+    
     //CAMBIO DE PLANIFICACION
     //PROVICIONAL
     //EJEMPLO DE COMO SE MANEJA EN CLASES INTERNAS DE COLA DE LISTOS Y NODO DE PROCESO
+    public void switchSchedule(String schedule, long quantum) {
+        Thread switcher = new Thread(() -> {
+            String prev_sched = getScheduleType();
+            String new_schedule;
+            new_schedule = switch (schedule) {
+                case "Priority", "FIFO", "RR", "SN", "SRT", "HRR", "FeedBack" -> schedule;
+                default -> "Priority";
+            };
+            if (!prev_sched.equals(new_schedule)) {
+                setScheduleType(new_schedule);
+                ProcessNode.priorityType=new_schedule;
+                try {
+                    this.readySem.acquire();
+                    this.readyProcesses.switchSchedule(new_schedule);
+                    this.readySem.release();
+                    this.readySuspSem.acquire();
+                    this.readySuspendedProcesses.switchSchedule(new_schedule);
+                    this.readySuspSem.release();
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(OperatingSystem.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                if (new_schedule.equals("RR") || new_schedule.equals("FeedBack")) {
+                    setQuantum(quantum);
+                }
+            }
+        });
+        switcher.setDaemon(true);
+        switcher.start();
+    }
+    
     public void switchSchedule(String schedule) {
-        String prev_sched = getScheduleType();
-        String new_schedule;
-        new_schedule = switch (schedule) {
-            case "Priority", "FIFO", "RR", "SN", "SRT", "HRR", "FeedBack" -> schedule;
-            default -> "Priority";
-        };
-        if (!prev_sched.equals(new_schedule)) {
-            setScheduleType(new_schedule);
-            ProcessNode.priorityType=new_schedule;
-            this.readyProcesses.switchSchedule(new_schedule);
-            this.readySuspendedProcesses.switchSchedule(new_schedule);
-        }
+        switchSchedule(schedule, getQuantum());
     }
     
     private void setScheduleType(String type) {
@@ -156,12 +205,9 @@ public class OperatingSystem {
         long runFor = Math.min(maxRun, instructionsLeft);
         String currentSchedule = getScheduleType();
         switch (currentSchedule) {
-            case "RR":
-            case "FeedBack":
-                runFor = Math.min(runFor, this.quantum);
-                break;
-            default:
-                break;
+            case "RR", "FeedBack" -> runFor = Math.min(runFor, this.quantum);
+            default -> {
+            }
         }
         //No quitar esto, que el thread no sirve si la variable no es final
         final long runTime = runFor;
@@ -178,7 +224,7 @@ public class OperatingSystem {
         long startCycle = getCounter();
         running.start();
         while (running.isAlive()) {
-            if (currentDuration == getCycleDuration() && currentSchedule == getScheduleType() && !(currentSchedule == "SRT" && lastSizeReady != this.readyProcesses.getSize())) {
+            if (currentDuration == getCycleDuration() && currentSchedule.equals(getScheduleType()) && !("SRT".equals(currentSchedule) && lastSizeReady != this.readyProcesses.getSize())) {
                 continue;
             }
             long endCycle = getCounter();
@@ -193,9 +239,35 @@ public class OperatingSystem {
         return p;
     }
     
-    private void manageSchedule() {
+    private void endProcess(OS_Process process) {
+        process.setState("Exit");
+        process.setTotalTime(OperatingSystem.cycleCounter);
+        exitProcesses.insertFinal(process);
+        //Falta el codigo que lo saca de memoria principal
+    }
+    
+    private void startProcessIO(OS_Process process) {
+        Thread IOThread = new Thread(() -> {
+            
+        });
+        IOThread.setDaemon(true);
+        IOThread.start();
+    }
+    
+    //Manegar excepción con un Try-Catch al momento de llamar el thread con esta funcion
+    private void manageSchedule() throws InterruptedException {
         if (!readyProcesses.isEmpty()) {
-            OS_Process process = runProcess(readyProcesses.extractRoot());
+            this.readySem.acquire();
+            OS_Process process = readyProcesses.extractRoot();
+            this.readySem.release();
+            process = runProcess(process);
+            if (process.getProgram_counter()==process.getPile()) {
+                if (process.getPileIO()!=0) {
+                    startProcessIO(process);
+                } else {
+                    endProcess(process);
+                }
+            }
         }
     }
     

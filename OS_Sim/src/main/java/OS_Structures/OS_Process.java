@@ -19,7 +19,7 @@ public class OS_Process {
     private long pileIO;
     private long program_counter=0;
     private long totalRunTime=0;
-    private int state;
+    private String state;
     
     public OS_Process(String name, int id, long birthTime, long maxRunTime, long pile, long pileIO, int priority) {
         this.name = name;
@@ -83,10 +83,13 @@ public class OS_Process {
         return pileIO;
     }
     
-    public int getState(){
+    public String getState(){
         return state;
     }
     
+    public void setState(String state) {
+        this.state = state;
+    }
     
     public void setTotalTime(long finalCycle) {
         if (totalRunTime!=0) {
