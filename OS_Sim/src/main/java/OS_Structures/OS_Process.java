@@ -16,21 +16,23 @@ public class OS_Process {
     private final long birthTime;
     private final long maxRunTime;
     private long pile;
+    private long pileIO;
     private long program_counter=0;
     private long totalRunTime=0;
     private int state;
     
-    public OS_Process(String name, int id, long birthTime, long maxRunTime, long pile, int priority) {
+    public OS_Process(String name, int id, long birthTime, long maxRunTime, long pile, long pileIO, int priority) {
         this.name = name;
         this.id = id;
         this.birthTime = birthTime;
         this.maxRunTime = maxRunTime;
         this.pile = pile;
         this.priority = priority;
+        this.pileIO = pileIO;
     }
     
     public OS_Process(String name, int id, long birthTime, long maxRunTime, long pile) {
-        this(name, id, birthTime, maxRunTime, pile, 100);
+        this(name, id, birthTime, maxRunTime, pile, 0, 100);
     }
 
     public String getName() {
@@ -64,6 +66,10 @@ public class OS_Process {
     public long getProgram_counter() {
         return program_counter;
     }
+
+    public void setProgram_counter(long program_counter) {
+        this.program_counter = program_counter;
+    }
     
     public long getTotalTime() {
         return totalRunTime;
@@ -71,6 +77,10 @@ public class OS_Process {
     
     public long getPile(){
         return pile;
+    }
+    
+    public long getPileIO() {
+        return pileIO;
     }
     
     public int getState(){

@@ -4,6 +4,8 @@
  */
 package OS_Structures;
 import Structures.*;
+import java.time.Duration;
+import java.util.concurrent.Semaphore;
 import main.GUI;
 import java.util.logging.Logger; 
 
@@ -21,6 +23,8 @@ public class OperatingSystem {
     private volatile boolean isCycleInSeconds; 
     public static long cycleCounter = 0;
     private String schedule = "Priority";
+    private long quantum = 1;
+    private boolean isInKernel = true;
     private long memorySpace;
     private ArrayList mainMemory;
     private ArrayList permMemory;
@@ -31,6 +35,7 @@ public class OperatingSystem {
     private ArrayList newProcesses;
     private ProcessNode runningProcess;
     private GUI ventana;
+    private Semaphore readySem;
     
     // Campo para mantener una referencia al hilo
     private Thread counterThread;
@@ -81,6 +86,9 @@ public class OperatingSystem {
         }
     }
     
+    public long getCycleDuration() {
+        return cycleDuration;
+    }
     
     public void startSystem() {
         this.counterThread = new Thread(() -> {
@@ -98,6 +106,8 @@ public class OperatingSystem {
         });
         this.counterThread.setDaemon(true); 
         this.counterThread.start();
+        
+        this.readySem = new Semaphore(1);
         
         ventana.setVisible(true);
         ventana.setLocationRelativeTo(null);
@@ -137,12 +147,56 @@ public class OperatingSystem {
         return this.schedule;
     }
     
-    private void runProcess() {
+    private OS_Process runProcess(OS_Process process) {
+        long currentDuration = getCycleDuration();
+        int lastSizeReady = this.readyProcesses.getSize();
+        OS_Process p = process;
+        long maxRun =  p.getMaxRunTime();
+        long instructionsLeft = p.getPile()-p.getProgram_counter();
+        long runFor = Math.min(maxRun, instructionsLeft);
+        String currentSchedule = getScheduleType();
+        switch (currentSchedule) {
+            case "RR":
+            case "FeedBack":
+                runFor = Math.min(runFor, this.quantum);
+                break;
+            default:
+                break;
+        }
+        //No quitar esto, que el thread no sirve si la variable no es final
+        final long runTime = runFor;
+        Thread running = new Thread(()->{
+            try {
+                Thread.sleep(runTime*this.cycleDuration);
+            } catch (InterruptedException e) {
+                // Modificado: Enviar a la GUI
+                ventana.addLogMessage("---> Proceso interrumpido");
+            }
+        });
+        running.setDaemon(true);
+        this.isInKernel = false;
+        long startCycle = getCounter();
+        running.start();
+        while (running.isAlive()) {
+            if (currentDuration == getCycleDuration() && currentSchedule == getScheduleType() && !(currentSchedule == "SRT" && lastSizeReady != this.readyProcesses.getSize())) {
+                continue;
+            }
+            long endCycle = getCounter();
+            running.interrupt();
+            p.setProgram_counter(p.getProgram_counter()+endCycle-startCycle);
+            this.isInKernel = true;
+            return p;
+        }
         
+        p.setProgram_counter(p.getProgram_counter()+runTime);
+        this.isInKernel = true;
+        return p;
     }
     
     private void manageSchedule() {
-        
+        if (!readyProcesses.isEmpty()) {
+            OS_Process process = runProcess(readyProcesses.extractRoot());
+        }
     }
     
     private void manageMemory() {

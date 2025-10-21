@@ -3,7 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package main;
-import OS_Structures.OperatingSystem;
+import OS_Structures.*;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
