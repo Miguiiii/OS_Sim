@@ -18,8 +18,8 @@ public class OS_Process {
     private long pile;
     private long pileIO;
     private long program_counter=0;
-    private long totalRunTime=0;
-    private String state;
+    private long totalTimeInOS=0;
+    private Status state;
     
     public OS_Process(String name, int id, long birthTime, long maxRunTime, long pile, long pileIO, int priority) {
         this.name = name;
@@ -29,6 +29,7 @@ public class OS_Process {
         this.pile = pile;
         this.priority = priority;
         this.pileIO = pileIO;
+        this.state = Status.NEW;
     }
     
     public OS_Process(String name, int id, long birthTime, long maxRunTime, long pile) {
@@ -72,7 +73,7 @@ public class OS_Process {
     }
     
     public long getTotalTime() {
-        return totalRunTime;
+        return totalTimeInOS;
     }
     
     public long getPile(){
@@ -83,20 +84,28 @@ public class OS_Process {
         return pileIO;
     }
     
-    public String getState(){
+    public boolean isCPUBound() {
+        return this.pileIO == 0;
+    }
+    
+    public boolean isIOBound() {
+        return !isCPUBound();
+    }
+    
+    public Status getState(){
         return state;
     }
     
-    public void setState(String state) {
+    public void setState(Status state) {
         this.state = state;
     }
     
     public void setTotalTime(long finalCycle) {
-        if (totalRunTime!=0) {
+        if (totalTimeInOS!=0) {
             System.out.println("This process's total runtime has already been set");
             return;
         }
-        this.totalRunTime = finalCycle-getBirthTime();
+        this.totalTimeInOS = finalCycle-getBirthTime();
     }
     
     @Override
