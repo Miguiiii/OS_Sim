@@ -3,13 +3,14 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package Structures;
+import java.util.Iterator;
 
 /**
  *
  * @author Miguel
  * @param <T> Any Object
  */
-public abstract class Heap<T>{
+public abstract class Heap<T> implements Iterable<T> {
     
     protected ArrayList<HeapNode<T>> heap;
     protected int size;
@@ -164,10 +165,18 @@ public abstract class Heap<T>{
     }
     
     protected int insertNode(HeapNode<T> node) {
+        if (getSize() == getMaxSize()) {
+            ArrayList<HeapNode<T>> newHeap = new ArrayList(getMaxSize() + 5);
+            for (int i = 0; i < getSize(); i++) {
+                newHeap.insertAtIndex(getHeap().getElmenetAtIndex(i), i);
+            }
+            setHeap(newHeap);
+            this.maxSize = this.maxSize + 5;
+        }
         int current = size;
         getHeap().insertFinal(node);
         size++;
-        this.maxSize = getHeap().getMaxSize();
+        
         return current;
     }
     
@@ -271,6 +280,11 @@ public abstract class Heap<T>{
  
     public void printInMemory() {
         getHeap().printInMemory();
+    }
+    
+    @Override
+    public Iterator iterator() {
+        return new ArrayIterator(getHeap());
     }
     
 }
