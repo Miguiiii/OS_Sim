@@ -14,5 +14,6 @@ public enum Status {
     READY,
     BLOCKED,
     BLOCKED_SUSPENDED,
-    READY_SUSPENDED;
+    READY_SUSPENDED,
+    EXIT;
 }
