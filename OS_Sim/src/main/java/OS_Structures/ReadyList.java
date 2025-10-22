@@ -22,7 +22,7 @@ public class ReadyList extends Heap<OS_Process>{
     }
     
     @Override
-    protected HeapNode<OS_Process> createNode(OS_Process element, long priority) {
+    protected ProcessNode createNode(OS_Process element, long priority) {
         return new ProcessNode(element);
     }
     

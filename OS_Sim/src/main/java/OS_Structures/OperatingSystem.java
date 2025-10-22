@@ -91,9 +91,7 @@ public class OperatingSystem {
         this.runningProcess = null;
         this.exitProcesses = new List();
         this.readySem = new Semaphore(1);
-        this.readySuspSem = new Semaphore(1);
-        this.blockSem = new Semaphore(1);
-        this.blockSuspSem = new Semaphore(1);
+        this.blockedSem = new Semaphore(1);
         this.newSem = new Semaphore(1);
         this.ventana.setOperatingSystem(this); 
     }

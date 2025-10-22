@@ -26,7 +26,11 @@ public class ProcessNode implements HeapNode<OS_Process>{
 
     @Override
     public long getPriority() {
-        return switch (getPriorityType()) {
+        return getPriority(getPriorityType());
+    }
+    
+    public long getPriority(Schedule schedule) {
+        return switch (schedule) {
             case Schedule.FIFO -> getElement().getTimeInSystem(OperatingSystem.cycleCounter);
             case Schedule.SHORTEST_NEXT -> getElement().getMaxRunTime();
             case Schedule.SHORTEST_REMAINING_TIME -> getElement().getMaxRunTime()-getElement().getProgram_counter();
