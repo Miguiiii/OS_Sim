@@ -80,21 +80,21 @@ public class OperatingSystem {
         this.isCycleInSeconds = true;
         this.cycleDuration = 1000; 
         this.ventana = new GUI();
-        mainMemory = new ArrayList(20);
-        permMemory = new ArrayList(20);
-        readyProcesses = new ReadyList(20);
-        readySuspendedProcesses = new ReadyList(20);
-        blockedProcesses = new ArrayList(20);
-        blockedSuspendedProcesses = new ArrayList(20);
-        newProcesses = new ArrayList(20);
-        runningProcess = null;
-        exitProcesses = new ArrayList(20);
-        processTable = new ArrayList(20);
-        readySem = new Semaphore(1);
-        readySuspSem = new Semaphore(1);
-        blockSem = new Semaphore(1);
-        blockSuspSem = new Semaphore(1);
-        newSem = new Semaphore(1);
+        this.mainMemory = new ArrayList(20);
+        this.permMemory = new ArrayList(20);
+        this.readyProcesses = new ReadyList(20);
+        this.readySuspendedProcesses = new ReadyList(20);
+        this.blockedProcesses = new ArrayList(20);
+        this.blockedSuspendedProcesses = new ArrayList(20);
+        this.newProcesses = new ArrayList(20);
+        this.runningProcess = null;
+        this.exitProcesses = new ArrayList(20);
+        this.processTable = new ArrayList(20);
+        this.readySem = new Semaphore(1);
+        this.readySuspSem = new Semaphore(1);
+        this.blockSem = new Semaphore(1);
+        this.blockSuspSem = new Semaphore(1);
+        this.newSem = new Semaphore(1);
         this.ventana.setOperatingSystem(this); 
     }
     
@@ -147,7 +147,7 @@ public class OperatingSystem {
             while (true) {
                 try {
                     Thread.sleep(this.cycleDuration);
-                    cycleCounter++;               
+                    cycleCounter++;
                     ventana.updateCycleCount(cycleCounter);
 
                 } catch (InterruptedException e) {
