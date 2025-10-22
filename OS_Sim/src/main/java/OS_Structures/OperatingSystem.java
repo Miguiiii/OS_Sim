@@ -24,27 +24,24 @@ public class OperatingSystem {
     private volatile boolean isCycleInSeconds; 
     public static long cycleCounter = 0;
     public volatile long programCounter = 0;
-    private String schedule = "Priority";
+    private Schedule schedule = Schedule.PRIORITY;
     private long quantum = 1;
     private boolean isInKernel = true;
     private long memorySpace;
-    private ArrayList<OS_Process> mainMemory;
-    private ArrayList<OS_Process> permMemory;
+    private long memoryUsed = 0;
     private ReadyList readyProcesses;
     private ReadyList readySuspendedProcesses;
-    private ArrayList<OS_Process> blockedProcesses;
-    private ArrayList<OS_Process> blockedSuspendedProcesses;
-    private ArrayList<OS_Process> newProcesses;
+    private ArrayList<OS_Process> blockedProcesses;             //Cambiar a HashMaps
+    private ArrayList<OS_Process> blockedSuspendedProcesses;    //Campiar a HashMaps
+    private List<OS_Process> newProcesses;
     private OS_Process runningProcess;
-    private ArrayList<OS_Process> exitProcesses;
-    private ArrayList<OS_Process> processTable;
+    private List<OS_Process> exitProcesses;
     private GUI ventana;
     private Semaphore readySem;
-    private Semaphore readySuspSem;
-    private Semaphore blockSem;
-    private Semaphore blockSuspSem;
+    private Semaphore blockedSem;
     private Semaphore newSem;
     
+    //Errores
     private class ThreadIO implements Runnable {
 
         private OS_Process process;
@@ -86,16 +83,13 @@ public class OperatingSystem {
         this.isCycleInSeconds = true;
         this.cycleDuration = 1000; 
         this.ventana = new GUI();
-        this.mainMemory = new ArrayList(20);
-        this.permMemory = new ArrayList(20);
-        this.readyProcesses = new ReadyList(20);
-        this.readySuspendedProcesses = new ReadyList(20);
+        this.readyProcesses = new ReadyList();
+        this.readySuspendedProcesses = new ReadyList();
         this.blockedProcesses = new ArrayList(20);
         this.blockedSuspendedProcesses = new ArrayList(20);
-        this.newProcesses = new ArrayList(20);
+        this.newProcesses = new List();
         this.runningProcess = null;
-        this.exitProcesses = new ArrayList(20);
-        this.processTable = new ArrayList(20);
+        this.exitProcesses = new List();
         this.readySem = new Semaphore(1);
         this.readySuspSem = new Semaphore(1);
         this.blockSem = new Semaphore(1);
@@ -191,86 +185,77 @@ public class OperatingSystem {
     }
     
     //CAMBIO DE PLANIFICACION
-    //PROVICIONAL
+    //PROVICIONAL?      COMO QUE NO VA A SER TAN PROVICIONAL
     //EJEMPLO DE COMO SE MANEJA EN CLASES INTERNAS DE COLA DE LISTOS Y NODO DE PROCESO
-    public void switchSchedule(String schedule, long quantum) {
+    public void switchSchedule(Schedule schedule, long quantum) {
         Thread switcher = new Thread(() -> {
-            String prev_sched = getScheduleType();
-            String new_schedule;
-            new_schedule = switch (schedule) {
-                case "Priority", "FIFO", "RR", "SN", "SRT", "HRR", "FeedBack" -> schedule;
-                default -> "Priority";
-            };
-            if (!prev_sched.equals(new_schedule)) {
-                setScheduleType(new_schedule);
-                ProcessNode.priorityType=new_schedule;
+            Schedule prev_sched = getScheduleType();
+            
+            if (schedule != prev_sched) {
+                setScheduleType(schedule);
                 try {
                     this.readySem.acquire();
-                    this.readyProcesses.switchSchedule(new_schedule);
+                    this.readyProcesses.switchSchedule(schedule);
+                    this.readySuspendedProcesses.switchSchedule(schedule);
                     this.readySem.release();
-                    this.readySuspSem.acquire();
-                    this.readySuspendedProcesses.switchSchedule(new_schedule);
-                    this.readySuspSem.release();
                 } catch (InterruptedException ex) {
                     Logger.getLogger(OperatingSystem.class.getName()).log(Level.SEVERE, null, ex);
                 }
-                if (new_schedule.equals("RR") || new_schedule.equals("FeedBack")) {
-                    setQuantum(quantum);
-                }
             }
+            setQuantum(quantum);
         });
         switcher.setDaemon(true);
         switcher.start();
     }
     
-    public void switchSchedule(String schedule) {
+    public void switchSchedule(Schedule schedule) {
         switchSchedule(schedule, getQuantum());
     }
     
-    private void setScheduleType(String type) {
-        this.schedule = type;
+    private void setScheduleType(Schedule schedule) {
+        this.schedule = schedule;
     }
     
-    public String getScheduleType() {
+    public Schedule getScheduleType() {
         return this.schedule;
     }
     
+    //MAL IMPLEMENTADO
+    //REVISAR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     private OS_Process runProcess(OS_Process process) {
-        OS_Process p = process;
-        long maxRun =  p.getMaxRunTime();
-        long instructionsLeft = p.getPile()-p.getProgram_counter();
+        runningProcess = process;
+        long maxRun =  process.getMaxRunTime();
+        long instructionsLeft = process.getPile()-process.getProgram_counter();
         long runTime = Math.min(maxRun, instructionsLeft);
-        String currentSchedule = getScheduleType();
+        Schedule currentSchedule = getScheduleType();
         switch (currentSchedule) {
-            case "RR", "FeedBack" -> runTime = Math.min(runTime, quantum);
-            default -> {
-            }
+            case Schedule.ROUND_ROBIN, Schedule.FEEDBACK -> runTime = Math.min(runTime, quantum);
+            default -> {}
         }
         int lastSizeReady = readyProcesses.getSize();
-        runningProcess = p;
         isInKernel = false;
-        while (programCounter<runTime) {
-            if ("SRT".equals(currentSchedule) && lastSizeReady != readyProcesses.getSize()) {
+        while (programCounter<runTime && runTime != 0) {
+            if (currentSchedule == Schedule.SHORTEST_REMAINING_TIME && lastSizeReady != readyProcesses.getSize()) {
                 break;
             }
             switch (getScheduleType()) {
-                case "SRT":
-                    if (currentSchedule.equals(getScheduleType())) {
+                case Schedule.SHORTEST_REMAINING_TIME:
+                    if (currentSchedule == getScheduleType()) {
                         break;
                     }
                 lastSizeReady = readyProcesses.getSize();
-                case "RR":
-                case "FeedBack":
+                case Schedule.ROUND_ROBIN:
+                case Schedule.FEEDBACK:
                     runTime = Math.min(runTime, quantum);
                 default:
                     currentSchedule = getScheduleType();
             }
         }
-        isInKernel = false;
+        isInKernel = true;
         runningProcess = null;
-        p.setProgram_counter(programCounter);
+        process.setProgram_counter(programCounter);
         programCounter = 0;
-        return p;
+        return process;
         
 //        long currentDuration = getCycleDuration();
 //        int lastSizeReady = this.readyProcesses.getSize();
@@ -324,12 +309,13 @@ public class OperatingSystem {
     }
     
     private void endProcess(OS_Process process) {
-        process.setState("Exit");
+        process.setState(Status.EXIT);
         process.setTotalTime(OperatingSystem.cycleCounter);
         exitProcesses.insertFinal(process);
         //Falta el codigo que lo saca de memoria principal
     }
     
+    //Errores
     private void startProcessIO(OS_Process process) {
         Thread IOThread = new Thread(() -> {
             long currentDuration = getCycleDuration();
