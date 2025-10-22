@@ -23,6 +23,7 @@ public class OperatingSystem {
     private volatile long cycleDuration;
     private volatile boolean isCycleInSeconds; 
     public static long cycleCounter = 0;
+    public volatile long programCounter = 0;
     private String schedule = "Priority";
     private long quantum = 1;
     private boolean isInKernel = true;
@@ -34,7 +35,7 @@ public class OperatingSystem {
     private ArrayList<OS_Process> blockedProcesses;
     private ArrayList<OS_Process> blockedSuspendedProcesses;
     private ArrayList<OS_Process> newProcesses;
-    private ProcessNode runningProcess;
+    private OS_Process runningProcess;
     private ArrayList<OS_Process> exitProcesses;
     private ArrayList<OS_Process> processTable;
     private GUI ventana;
@@ -47,18 +48,20 @@ public class OperatingSystem {
     private class ThreadIO implements Runnable {
 
         private OS_Process process;
-        private long currentDuration;
         private long pileIO;
         
         public ThreadIO(OS_Process process) {
             this.process = process;
+            this.pileIO = process.getPileIO();
         }
         
         @Override
         public void run() {
             Thread IO = new Thread(()->{
             try {
-                Thread.sleep(pileIO*this.currentDuration);
+                for (; this.pileIO>0; this.pileIO--) {
+                    Thread.sleep(getCycleDuration());
+                }
             } catch (InterruptedException e) {
                 // Modificado: Enviar a la GUI
                 ventana.addLogMessage("---> Proceso interrumpido");
@@ -66,9 +69,12 @@ public class OperatingSystem {
         });
             IO.setDaemon(true);
             IO.start();
-            while (IO.isAlive()) {
-                if ()
+            try {
+                IO.join();
+            } catch (InterruptedException ex) {
+                System.getLogger(OperatingSystem.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
             }
+            
         }
         
     }
@@ -149,6 +155,9 @@ public class OperatingSystem {
                     Thread.sleep(this.cycleDuration);
                     cycleCounter++;
                     ventana.updateCycleCount(cycleCounter);
+                    if (!this.isInKernel) {
+                        programCounter++;
+                    }
 
                 } catch (InterruptedException e) {
                     // Modificado: Enviar a la GUI
@@ -227,55 +236,91 @@ public class OperatingSystem {
     }
     
     private OS_Process runProcess(OS_Process process) {
-        long currentDuration = getCycleDuration();
-        int lastSizeReady = this.readyProcesses.getSize();
         OS_Process p = process;
         long maxRun =  p.getMaxRunTime();
         long instructionsLeft = p.getPile()-p.getProgram_counter();
-        long runFor = Math.min(maxRun, instructionsLeft);
+        long runTime = Math.min(maxRun, instructionsLeft);
         String currentSchedule = getScheduleType();
         switch (currentSchedule) {
-            case "RR", "FeedBack" -> runFor = Math.min(runFor, this.quantum);
+            case "RR", "FeedBack" -> runTime = Math.min(runTime, quantum);
             default -> {
             }
         }
-        //No quitar esto, que el thread no sirve si la variable no es final
-        final long runTime = runFor;
-        Thread running = new Thread(()->{
-            try {
-                Thread.sleep(runTime*this.cycleDuration);
-            } catch (InterruptedException e) {
-                // Modificado: Enviar a la GUI
-                ventana.addLogMessage("---> Proceso interrumpido");
-            }
-        });
-        running.setDaemon(true);
-        this.isInKernel = false;
-        long startCycle = getCounter();
-        running.start();
-        while (running.isAlive()) {
-            if (currentDuration == getCycleDuration() && currentSchedule.equals(getScheduleType()) && !("SRT".equals(currentSchedule) && lastSizeReady != this.readyProcesses.getSize())) {
-                continue;
-            }
-            //Poner aquí Logs dependiendo de la razon de interrupcion
-            
-            /*
-            DUDA: Al interrumpirse un proceso por cambio de duracion de ciclo o de planificacion
-            se deja que el proceso se interrumpe por completo y que se regrese a Listos
-            o que en esos dos casos se resuma su ejecucion pero ajustado a la nueva duracion del ciclo?????
-            */
-            long endCycle = getCounter();
-            running.interrupt();
-            long newRunTime = endCycle-startCycle;
-            if (newRunTime > runTime) {
+        int lastSizeReady = readyProcesses.getSize();
+        runningProcess = p;
+        isInKernel = false;
+        while (programCounter<runTime) {
+            if ("SRT".equals(currentSchedule) && lastSizeReady != readyProcesses.getSize()) {
                 break;
             }
-            runFor = newRunTime;
+            switch (getScheduleType()) {
+                case "SRT":
+                    if (currentSchedule.equals(getScheduleType())) {
+                        break;
+                    }
+                lastSizeReady = readyProcesses.getSize();
+                case "RR":
+                case "FeedBack":
+                    runTime = Math.min(runTime, quantum);
+                default:
+                    currentSchedule = getScheduleType();
+            }
         }
-        
-        p.setProgram_counter(p.getProgram_counter()+runFor);
-        this.isInKernel = true;
+        isInKernel = false;
+        runningProcess = null;
+        p.setProgram_counter(programCounter);
+        programCounter = 0;
         return p;
+        
+//        long currentDuration = getCycleDuration();
+//        int lastSizeReady = this.readyProcesses.getSize();
+//        OS_Process p = process;
+//        long maxRun =  p.getMaxRunTime();
+//        long instructionsLeft = p.getPile()-p.getProgram_counter();
+//        long runTime = Math.min(maxRun, instructionsLeft);
+//        String currentSchedule = getScheduleType();
+//        switch (currentSchedule) {
+//            case "RR", "FeedBack" -> runTime = Math.min(runTime, this.quantum);
+//            default -> {
+//            }
+//        }
+//        //No quitar esto, que el thread no sirve si la variable no es final
+//        final long runTime = runTime;
+//        Thread running = new Thread(()->{
+//            try {
+//                Thread.sleep(runTime*this.cycleDuration);
+//            } catch (InterruptedException e) {
+//                // Modificado: Enviar a la GUI
+//                ventana.addLogMessage("---> Proceso interrumpido");
+//            }
+//        });
+//        running.setDaemon(true);
+//        this.isInKernel = false;
+//        long startCycle = getCounter();
+//        running.start();
+//        while (running.isAlive()) {
+//            if (currentDuration == getCycleDuration() && currentSchedule.equals(getScheduleType()) && !("SRT".equals(currentSchedule) && lastSizeReady != this.readyProcesses.getSize())) {
+//                continue;
+//            }
+//            //Poner aquí Logs dependiendo de la razon de interrupcion
+//            
+//            /*
+//            DUDA: Al interrumpirse un proceso por cambio de duracion de ciclo o de planificacion
+//            se deja que el proceso se interrumpe por completo y que se regrese a Listos
+//            o que en esos dos casos se resuma su ejecucion pero ajustado a la nueva duracion del ciclo?????
+//            */
+//            long endCycle = getCounter();
+//            running.interrupt();
+//            long newRunTime = endCycle-startCycle;
+//            if (newRunTime > runTime) {
+//                break;
+//            }
+//            runTime = newRunTime;
+//        }
+//        
+//        p.setProgram_counter(p.getProgram_counter()+runTime);
+//        this.isInKernel = true;
+//        return p;
     }
     
     private void endProcess(OS_Process process) {
