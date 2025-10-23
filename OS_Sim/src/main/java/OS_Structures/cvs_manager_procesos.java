@@ -66,8 +66,8 @@ public class cvs_manager_procesos {
                     long birthTime = Long.parseLong(data[3]);
                     long maxRunTime = Long.parseLong(data[4]);
                     long pile = Long.parseLong(data[5]);
-                    OS_Process foundProcess = new OS_Process(name, currentId, birthTime, maxRunTime, pile, priority);
-                    return foundProcess;
+                    //OS_Process foundProcess = new OS_Process(name, currentId, birthTime, maxRunTime, pile, priority);
+                   // return foundProcess;
                 }
             }
         } catch (IOException e) {

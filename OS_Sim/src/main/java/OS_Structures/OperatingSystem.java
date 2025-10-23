@@ -105,8 +105,26 @@ public class OperatingSystem {
         if (inicioDialog.isStarted()) {
             setMemorySpace(inicioDialog.getMemorySpace());
             setCycleDuration(inicioDialog.getCycleDuration(), inicioDialog.getUnit());
-            String initialSchedule = inicioDialog.getSchedule();
-            this.setScheduleType(initialSchedule); 
+            
+
+            String initialScheduleStr = inicioDialog.getSchedule(); 
+            Schedule initialScheduleEnum; 
+            
+
+            if ("Priority".equalsIgnoreCase(initialScheduleStr)) {
+                initialScheduleEnum = Schedule.PRIORITY;
+            } else if ("Round Robin".equalsIgnoreCase(initialScheduleStr)) {
+                initialScheduleEnum = Schedule.ROUND_ROBIN;
+            } else if ("SRT".equalsIgnoreCase(initialScheduleStr)) {
+                initialScheduleEnum = Schedule.SHORTEST_REMAINING_TIME;
+            } else if ("Feedback".equalsIgnoreCase(initialScheduleStr)) {
+                initialScheduleEnum = Schedule.FEEDBACK;
+            } else {
+                initialScheduleEnum = Schedule.PRIORITY; 
+            }
+            this.setScheduleType(initialScheduleEnum); 
+    
+            
             this.ventana = new GUI();
             this.ventana.setOperatingSystem(this); 
             this.startSystem();
@@ -192,7 +210,7 @@ public class OperatingSystem {
             initialUnit = "Milisegundos";
         }
         ventana.setInitialDuration(initialValue, initialUnit);
-        ventana.setInitialSchedule(this.schedule);
+        ventana.setInitialSchedule(this.schedule.toString());
     }
 
     public long getMemorySpace() {
@@ -259,8 +277,8 @@ public class OperatingSystem {
             unit = "Milisegundos";
         }
         String fileName = configName.endsWith(".csv") ? configName : configName + ".csv";
-        
-        configManager.guardarConfiguracion(fileName, getScheduleType(), getMemorySpace(), durationValue, unit);
+
+        configManager.guardarConfiguracion(fileName, getScheduleType().toString(), getMemorySpace(), durationValue, unit);
     }
     
 
@@ -270,7 +288,7 @@ public class OperatingSystem {
         
         int id = (name + birthTime).hashCode();
         
-        OS_Process newProcess = new OS_Process(name, id, birthTime, maxRunTime, pile, priority);
+        OS_Process newProcess = new OS_Process(name, id, birthTime, maxRunTime, pile, 0, priority);
         
         this.newProcesses.insertFinal(newProcess); 
         
