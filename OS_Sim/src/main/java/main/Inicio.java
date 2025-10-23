@@ -3,7 +3,11 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
  */
 package main;
+import OS_Structures.cvs_manager_configuracion;
+import java.io.File;
+import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  *
@@ -16,12 +20,14 @@ public class Inicio extends javax.swing.JDialog {
     private String unit;
     private String schedule;
     private boolean started = false;
+    private cvs_manager_configuracion configLoader;
 
     public Inicio(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
         setTitle("Configuración Inicial");
-        setPreferredSize(new java.awt.Dimension(300, 300));
+        setPreferredSize(new java.awt.Dimension(350, 300));
+        this.configLoader = new cvs_manager_configuracion();
         pack(); 
     }
     
@@ -50,6 +56,7 @@ public class Inicio extends javax.swing.JDialog {
         scheduleLabel = new javax.swing.JLabel();
         scheduleComboBox = new javax.swing.JComboBox<>();
         buttonPanel = new javax.swing.JPanel();
+        loadConfigButton = new javax.swing.JButton();
         startButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
@@ -131,6 +138,14 @@ public class Inicio extends javax.swing.JDialog {
 
         getContentPane().add(mainPanel, java.awt.BorderLayout.CENTER);
 
+        loadConfigButton.setText("Cargar Configuración");
+        loadConfigButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                loadConfigButtonActionPerformed(evt);
+            }
+        });
+        buttonPanel.add(loadConfigButton);
+
         startButton.setText("Iniciar Simulación");
         startButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -145,7 +160,7 @@ public class Inicio extends javax.swing.JDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void memoryFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_memoryFieldActionPerformed
-        // TODO add your handling code here:
+
     }//GEN-LAST:event_memoryFieldActionPerformed
 
     private void startButtonActionPerformed(java.awt.event.ActionEvent evt) {
@@ -174,12 +189,37 @@ public class Inicio extends javax.swing.JDialog {
                 JOptionPane.ERROR_MESSAGE);
         }
     }
+
+    private void loadConfigButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                 
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Seleccionar archivo de configuración");
+        fileChooser.setCurrentDirectory(new File(".")); // Directorio actual
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Archivos CSV", "csv"));
+
+        int userSelection = fileChooser.showOpenDialog(this);
+
+        if (userSelection == JFileChooser.APPROVE_OPTION) {
+            File fileToLoad = fileChooser.getSelectedFile();
+            String[] config = configLoader.cargarConfiguracion(fileToLoad.getAbsolutePath());
+
+            if (config != null && config.length == 4) {
+                scheduleComboBox.setSelectedItem(config[0]);
+                memoryField.setText(config[1]);
+                durationField.setText(config[2]);
+                unitComboBox.setSelectedItem(config[3]);
+                JOptionPane.showMessageDialog(this, "Configuración cargada desde '" + fileToLoad.getName() + "'", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "El archivo seleccionado no es una configuración válida.", "Error de Carga", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
     
     
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel buttonPanel;
     private javax.swing.JTextField durationField;
     private javax.swing.JLabel durationLabel;
+    private javax.swing.JButton loadConfigButton;
     private javax.swing.JPanel mainPanel;
     private javax.swing.JTextField memoryField;
     private javax.swing.JLabel memoryLabel;

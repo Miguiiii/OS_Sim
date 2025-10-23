@@ -15,12 +15,12 @@ import java.io.PrintWriter;
  * @author vince
  */
 
-public class cvs_manager {
+public class cvs_manager_procesos {
 
     private final String filePath;
     private static final String CSV_HEADER = "ID,Name,Priority,BirthTime,MaxRunTime,Pile,ProgramCounter,State";
 
-    public cvs_manager(String fileName) {
+    public cvs_manager_procesos(String fileName) {
         this.filePath = fileName;
     }
     

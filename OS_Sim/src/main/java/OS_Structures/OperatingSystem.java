@@ -28,15 +28,25 @@ public class OperatingSystem {
     private ArrayList blockedProcesses;
     private ArrayList blockedSuspendedProcesses;
     private ArrayList newProcesses;
+    private ArrayList finishedProcesses;;
     private ProcessNode runningProcess;
     private GUI ventana;
-    
+    private cvs_manager_configuracion configManager;
     private Thread counterThread;
     
     public OperatingSystem() {
         this.isCycleInSeconds = true;
         this.cycleDuration = 1000; 
-
+        this.configManager = new cvs_manager_configuracion();
+        mainMemory = new ArrayList(20);
+        permMemory = new ArrayList(20);
+        readyProcesses = new ReadyList(20);
+        readySuspendedProcesses = new ReadyList(20);
+        blockedProcesses = new ArrayList(20);
+        blockedSuspendedProcesses = new ArrayList(20);
+        newProcesses = new ArrayList(20);
+        finishedProcesses = new ArrayList(20);
+        runningProcess = null;
     }
 
     public void boot() {
@@ -113,7 +123,7 @@ public class OperatingSystem {
         this.counterThread.setDaemon(true); 
         this.counterThread.start();
         ventana.setVisible(true);
-        ventana.setLocationRelativeTo(null);
+        // ventana.setLocationRelativeTo(null); // Quitado para que setExtendedState funcione
         ventana.addLogMessage("Sistema iniciado. Espacio de memoria total: " + this.memorySpace + " KB.");
         ventana.addLogMessage("Algoritmo de planificación: " + this.schedule);
         
@@ -150,12 +160,7 @@ public class OperatingSystem {
         };
         if (!prev_sched.equals(new_schedule)) {
             setScheduleType(new_schedule);
-            
-
-            ProcessNode.priorityType=new_schedule;
-            this.readyProcesses.switchSchedule(new_schedule);
-            this.readySuspendedProcesses.switchSchedule(new_schedule);
-            
+     
             if (ventana != null && ventana.isVisible()) {
                 ventana.addLogMessage("ALGORITMO CAMBIADO: De " + prev_sched + " a " + new_schedule);
             }
@@ -172,6 +177,45 @@ public class OperatingSystem {
     
     public String getScheduleType() {
         return this.schedule;
+    }
+
+    public void saveCurrentConfiguration(String configName) {
+        long durationValue;
+        String unit;
+
+        if (this.isCycleInSeconds) {
+            durationValue = this.cycleDuration / 1000;
+            unit = "Segundos";
+        } else {
+            durationValue = this.cycleDuration;
+            unit = "Milisegundos";
+        }
+        String fileName = configName.endsWith(".csv") ? configName : configName + ".csv";
+        
+        configManager.guardarConfiguracion(fileName, getScheduleType(), getMemorySpace(), durationValue, unit);
+    }
+    
+
+    public void createNewProcess(String name, long maxRunTime, long pile, int priority) {
+       
+        long birthTime = getCounter();
+        
+        int id = (name + birthTime).hashCode();
+        
+        OS_Process newProcess = new OS_Process(name, id, birthTime, maxRunTime, pile, priority);
+        
+        this.newProcesses.insertFinal(newProcess); 
+        
+        if (ventana != null) {
+            ventana.addLogMessage("PROCESO CREADO: " + newProcess.getName() + 
+                                  " [ID: " + newProcess.getId() + 
+                                  ", Prio: " + newProcess.getPriority() + 
+                                  ", T.Max: " + newProcess.getMaxRunTime() + "ms" +
+                                  ", Mem: " + newProcess.getPile() + "KB]" +
+                                  " en Ciclo " + newProcess.getBirthTime());
+            
+            ventana.addNewProcessToView(newProcess);
+        }
     }
     
     private void runProcess() {

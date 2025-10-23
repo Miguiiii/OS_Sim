@@ -27,6 +27,7 @@ public class OS_Process {
         this.maxRunTime = maxRunTime;
         this.pile = pile;
         this.priority = priority;
+        this.state = 0;
     }
     
     public OS_Process(String name, int id, long birthTime, long maxRunTime, long pile) {
