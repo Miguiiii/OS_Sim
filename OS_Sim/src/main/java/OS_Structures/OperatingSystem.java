@@ -281,29 +281,38 @@ public class OperatingSystem {
         configManager.guardarConfiguracion(fileName, getScheduleType().toString(), getMemorySpace(), durationValue, unit);
     }
     
-
     public void createNewProcess(String name, long maxRunTime, long pile, int priority) {
-       
-        long birthTime = getCounter();
-        
-        int id = (name + birthTime).hashCode();
-        
-        OS_Process newProcess = new OS_Process(name, id, birthTime, maxRunTime, pile, 0, priority);
-        
-        this.newProcesses.insertFinal(newProcess); 
-        
-        if (ventana != null) {
-            ventana.addLogMessage("PROCESO CREADO: " + newProcess.getName() + 
-                                  " [ID: " + newProcess.getId() + 
-                                  ", Prio: " + newProcess.getPriority() + 
-                                  ", T.Max: " + newProcess.getMaxRunTime() + "ms" +
-                                  ", Mem: " + newProcess.getPile() + "KB]" +
-                                  " en Ciclo " + newProcess.getBirthTime());
-            
-            ventana.addNewProcessToView(newProcess);
+
+            long birthTime = getCounter();
+
+            // --- REQUERIMIENTO 2: Cambiar nombre ---
+            // El nombre ahora incluye el tiempo de creación (ciclo)
+            String finalName = name + " (T" + birthTime + ")";
+
+            // --- REQUERIMIENTO 1: ID no negativo ---
+            int id = (finalName + birthTime).hashCode(); // Usar finalName para el hash
+            id = Math.abs(id); // Asegurar que el ID sea positivo
+
+            // --- CORRECCIÓN 4 (previa) ---
+            // Se agregó el argumento pileIO (como 0) para coincidir con el constructor de 7 argumentos
+            OS_Process newProcess = new OS_Process(finalName, id, birthTime, maxRunTime, pile, 0, priority); // Usar finalName
+
+            this.newProcesses.insertFinal(newProcess); 
+
+            if (ventana != null) {
+                // --- CORRECCIÓN DE ESTA SOLICITUD ---
+                // Se cambió "Mem: ... KB" por "Pila: ... inst." para reflejar que 'pile' son instrucciones.
+                ventana.addLogMessage("PROCESO CREADO: " + newProcess.getName() + 
+                                      " [ID: " + newProcess.getId() + 
+                                      ", Prio: " + newProcess.getPriority() + 
+                                      ", T.Max: " + newProcess.getMaxRunTime() + "ms" +
+                                      ", Pila: " + newProcess.getPile() + " inst.]" +
+                                      " en Ciclo " + newProcess.getBirthTime());
+
+                ventana.addNewProcessToView(newProcess);
+            }
         }
-    }
-    
+
     //MAL IMPLEMENTADO
     //REVISAR!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     private OS_Process runProcess(OS_Process process) {
