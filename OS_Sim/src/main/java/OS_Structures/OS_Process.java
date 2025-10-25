@@ -118,6 +118,7 @@ public class OS_Process {
     
     public void preempted() {
         timesPreempted++;
+        this.state = Status.READY;
     }
     
     public OS_Process runInstruction() {

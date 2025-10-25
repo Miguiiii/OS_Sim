@@ -52,12 +52,12 @@ public class ReadyList implements Iterable {
         return this.isMin;
     }
     
-    public ProcessNode peekNode() {
+    public ProcessNode peekRootNode() {
         return getHeap().getElmenetAtIndex(0);
     }
     
-    public OS_Process peek() {
-        return peekNode().getElement();
+    public OS_Process peekRoot() {
+        return peekRootNode().getElement();
     }
     
     public boolean isEmpty() {
@@ -278,9 +278,20 @@ public class ReadyList implements Iterable {
     }
     
     public long peekTopPriority() {
-        return peekNode().getPriority();
+        return peekRootNode().getPriority();
     }
     
+    public ProcessNode peekLastNode() {
+        return getHeap().getElmenetAtIndex(size-1);
+    }
+    
+    public OS_Process peekLast() {
+        return peekLastNode().getElement();
+    }
+    
+    public long peekLastPriority() {
+        return peekLastNode().getPriority();
+    }
 }
 
 class HeapIterator implements Iterator {
