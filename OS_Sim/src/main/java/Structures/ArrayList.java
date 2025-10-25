@@ -20,7 +20,8 @@ public class ArrayList<T> implements Iterable<T> {
         this.head = null;
         this.maxSize = maxSize;
         this.size = 0;
-        this.array = new ArrayNode[0];
+        this.array = new ArrayNode[0]; 
+
     }
 
     public Integer getHead() {
@@ -62,6 +63,11 @@ public class ArrayList<T> implements Iterable<T> {
     public T getElmenetAtIndex(int index) {
         T element = null;
         int cont = 0;
+        
+        if (index < 0 || index >= getSize()) {
+            return null;
+        }
+        
         for (T i:this) {
             if (cont == index) {
                 element = i;
@@ -150,7 +156,16 @@ public class ArrayList<T> implements Iterable<T> {
             insertBegin(element);
         } else if(getSize() == getMaxSize()) {
             System.out.println("Max Array size reached");
-        } else if(index <= getArray().length) {
+        } else if(index >= 0 && index <= getSize()) { 
+            if (index == 0) {
+                insertBegin(element);
+                return; 
+            }
+            if (index == getSize()) {
+                insertFinal(element);
+                return;
+            }
+
             int position = searchSpace();
             if (position != -1) {
                 getArray()[position] = nodo;
@@ -186,7 +201,7 @@ public class ArrayList<T> implements Iterable<T> {
             }
             size++;
         } else {
-            System.out.println("Invalid index");
+            System.out.println("Invalid index: " + index + " for size: " + getSize());
         }
     }
 
@@ -226,9 +241,11 @@ public class ArrayList<T> implements Iterable<T> {
     public T deleteAtIndex(int index) {
         if(isEmpty()) {
             System.out.println("The list is empty");
+        } else if (index < 0 || index >= getSize()) {
+             System.out.println("Invalid index: " + index + " for size: " + getSize());
         } else if (index == 0) {
             return deleteBegin();
-        } else if (index <= getArray().length) {
+        } else {
             int cont = 0;
             int pointer = getHead();
             while (cont < index - 1) {
@@ -242,8 +259,6 @@ public class ArrayList<T> implements Iterable<T> {
             temp.setNext(null);
             size--;
             return temp.getElement();
-        } else {
-            System.out.println("Invalid index");
         }
         return null;
     }
@@ -253,7 +268,7 @@ public class ArrayList<T> implements Iterable<T> {
         if (isEmpty()) {
             System.out.println("The list is empty");
         } else {
-            System.out.println("Element not found");
+            System.out.println("Element not found (deleteElement is deprecated and not implemented)");
         }
         
         return null;
@@ -270,7 +285,12 @@ public class ArrayList<T> implements Iterable<T> {
     public void printInMemory() {
         String array = "";
         for (int i = 0; i < getArray().length; i++) {
-            array+="["+getArray()[i].getElement()+"]";
+            // --- MODIFICACIÓN: Comprobar si es null ---
+            if (getArray()[i] != null) {
+                array+="["+getArray()[i].getElement()+"]";
+            } else {
+                array+="[null]";
+            }
         }
         System.out.println(array);
         

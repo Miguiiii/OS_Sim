@@ -17,10 +17,10 @@ public class OS_Process {
     private final long birthTime;
     private long cyclesToCallException = 0;
     private long cyclesToCompleteException = 0;
-    private long PC = 1;
-    private long MAR = 0;
+    private volatile long PC = 1;
+    private volatile long MAR = 0;
+    private volatile Status state = Status.NEW;
     private long totalTimeInOS = 0;
-    private Status state = Status.NEW;
     private int timesPreempted = 0;
     
     /**

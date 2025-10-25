@@ -30,16 +30,24 @@ public class GUI extends javax.swing.JFrame {
     public GUI() {
         initComponents();
 
-        // --- INICIO DE MODIFICACIONES MANUALES ---
-        // Este código se ejecuta DESPUÉS de que el diseñador (initComponents) crea los componentes.
         
         this.setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
 
-        // Ocultar Quantum por defecto
+
         quantumLabel.setVisible(false);
         quantumField.setVisible(false);
+ 
+        ioBoundCheckBox.setSelected(false);
         
-        // Configurar los listeners de "paneo" (arrastrar) para los JScrollPanes
+
+        cyclesToCallField.setEnabled(false);
+        cyclesToCompleteField.setEnabled(false);
+        cyclesToCallLabel.setEnabled(false);
+        cyclesToCompleteLabel.setEnabled(false);
+  
+        cyclesToCallField.setText("0");
+        cyclesToCompleteField.setText("0");
+
         MousePanListener verticalPan1 = new MousePanListener(newProcessScrollPane);
         newProcessListPanel.addMouseListener(verticalPan1);
         newProcessListPanel.addMouseMotionListener(verticalPan1);
@@ -63,10 +71,8 @@ public class GUI extends javax.swing.JFrame {
         MousePanListener horizontalPan = new MousePanListener(finishedScrollPane);
         finishedListPanel.addMouseListener(horizontalPan);
         finishedListPanel.addMouseMotionListener(horizontalPan);
-        
-        // --- FIN DE MODIFICACIONES MANUALES ---
-    }
 
+    }
     public void setOperatingSystem(OperatingSystem os) {
         this.os = os;
     }
@@ -112,31 +118,48 @@ public class GUI extends javax.swing.JFrame {
         });
     }
 
-    private void createProcessCard(OS_Process process, JPanel parentPanel) {
+    /**
+     * Crea un panel visual (una "tarjeta") para un proceso y lo añade a un panel padre.
+     * @param process El proceso a mostrar.
+     * @param parentPanel El panel (ej. readyListPanel) donde se añadirá la tarjeta.
+     */
+    private void createProcessCard(OS_Structures.OS_Process process, JPanel parentPanel) {
+        
         JPanel processCard = new JPanel();
+        // Usar BoxLayout para apilar las etiquetas verticalmente
         processCard.setLayout(new BoxLayout(processCard, BoxLayout.Y_AXIS));
-        processCard.setBackground(Color.WHITE);
-        processCard.setBorder(BorderFactory.createEtchedBorder());
-
-        processCard.add(Box.createRigidArea(new Dimension(0, 5)));
-        processCard.add(new JLabel(" Nombre: " + process.getName()));
-        processCard.add(new JLabel(" ID: " + process.getId()));
-        processCard.add(new JLabel(" Prioridad: " + process.getPriority()));
-        processCard.add(new JLabel(" T. Máx: " + process.getMaxRunTime() + "ms"));
-        processCard.add(new JLabel(" Memoria: " + process.getPile() + "KB"));
-        processCard.add(new JLabel(" Ciclo Nac.: " + process.getBirthTime()));
-        processCard.add(Box.createRigidArea(new Dimension(0, 5)));
-
-        int cardHeight = 110;
-        processCard.setMinimumSize(new Dimension(100, cardHeight));
-        processCard.setMaximumSize(new Dimension(Short.MAX_VALUE, cardHeight));
-
-        parentPanel.add(processCard);
-
-        if (parentPanel != finishedListPanel) {
-            parentPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+        processCard.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color.BLACK, 1), // Borde exterior
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)     // Relleno interior
+        ));
+        
+        // Asignar color según el estado
+        switch (process.getState()) {
+            case RUNNING:
+                processCard.setBackground(new Color(173, 216, 230)); // Azul claro
+                break;
+            case BLOCKED:
+                processCard.setBackground(new Color(255, 182, 193)); // Rosa claro
+                break;
+            case READY:
+                processCard.setBackground(new Color(144, 238, 144)); // Verde claro
+                break;
+            default:
+                processCard.setBackground(Color.WHITE);
+                break;
         }
+
+        // Añadir la información del proceso
+        processCard.add(new JLabel(" ID: " + process.getId() + " - " + process.getName()));
+        processCard.add(new JLabel(" Prio: " + process.getPriority() + " | Pila: " + process.getPile()));
+        processCard.add(new JLabel(" PC: " + process.getMAR() + " / " + process.getPile()));
+        processCard.add(new JLabel(" Tipo: " + (process.isIOBound() ? "I/O Bound" : "CPU Bound")));
+        
+        // Añadir un espacio en blanco entre tarjetas
+        parentPanel.add(processCard);
+        parentPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Espaciador vertical
     }
+    
 
     public void updateReadyList(Iterable<OS_Process> processes) {
         SwingUtilities.invokeLater(() -> {
@@ -161,6 +184,21 @@ public class GUI extends javax.swing.JFrame {
             }
             blockedListPanel.revalidate();
             blockedListPanel.repaint();
+        });
+    }
+    
+    public void updateRunningProcess(OS_Structures.OS_Process process) {
+        // Ejecutar en el hilo de la GUI
+        SwingUtilities.invokeLater(() -> {
+            runningProcessPanel.removeAll(); // Limpiar el panel "Running"
+
+            if (process != null) {
+                // Si un proceso está corriendo, crear su tarjeta
+                createProcessCard(process, runningProcessPanel);
+            }
+
+            runningProcessPanel.revalidate();
+            runningProcessPanel.repaint();
         });
     }
 
@@ -198,6 +236,162 @@ public class GUI extends javax.swing.JFrame {
             finishedListPanel.repaint();
         });
     }
+    
+    /**
+     * Orquesta la actualización de todas las colas de procesos en la GUI.
+     * Este método es seguro para ser llamado desde cualquier hilo (ej. el hilo del OS).
+     */
+    public void refreshAllQueues() {
+        // Todas las actualizaciones de Swing DEBEN ocurrir en el Event Dispatch Thread (EDT).
+        // invokeLater pone este trabajo en la cola del EDT.
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Actualizamos cada panel
+                refreshNewList();
+                refreshReadyList();
+                refreshReadySuspendedList();
+                refreshBlockedList();
+                refreshBlockedSuspendedList();
+                refreshFinishedList();
+                
+                // Actualizar contadores de memoria
+                if (os != null) {
+                    memoryTotalLabel.setText(os.getMemorySpace() + " KB");
+                    memoryFreeLabel.setText(os.getMemoryFree() + " KB");
+                }
+
+            } catch (Exception e) {
+                // Captura cualquier error durante el redibujado
+                logger.log(java.util.logging.Level.SEVERE, "Error al refrescar las colas de la GUI", e);
+            }
+        });
+    }
+    
+    // --- MÉTODOS AUXILIARES DE REFRESCO DE PANELES ---
+
+    private void refreshNewList() throws InterruptedException {
+        if (os == null || os.getNewSem() == null) return;
+        
+        os.getNewSem().acquire(); // Bloquear la lista de 'New'
+        try {
+            newProcessListPanel.removeAll(); // Limpiar panel visual
+            
+            // Iterar sobre tu 'List<OS_Process>' personalizada
+            for (OS_Structures.OS_Process p : os.getNewProcesses()) {
+                createProcessCard(p, newProcessListPanel);
+            }
+            
+            // Revalidar y repintar el panel
+            newProcessListPanel.revalidate();
+            newProcessListPanel.repaint();
+            
+        } finally {
+            os.getNewSem().release(); // Liberar la lista
+        }
+    }
+
+    private void refreshReadyList() throws InterruptedException {
+        if (os == null || os.getReadySem() == null) return;
+        
+        os.getReadySem().acquire(); // Bloquear las listas 'Ready'
+        try {
+            readyListPanel.removeAll();
+            
+            // Iterar sobre tu 'ReadyList' (que es un Heap de ProcessNode)
+            for (Object nodeObj : os.getReadyProcesses()) {
+                OS_Structures.ProcessNode node = (OS_Structures.ProcessNode) nodeObj;
+                createProcessCard(node.getElement(), readyListPanel);
+            }
+            
+            readyListPanel.revalidate();
+            readyListPanel.repaint();
+            
+        } finally {
+            os.getReadySem().release();
+        }
+    }
+
+    private void refreshReadySuspendedList() throws InterruptedException {
+        if (os == null || os.getReadySem() == null) return;
+        
+        os.getReadySem().acquire(); // Bloquear las listas 'Ready'
+        try {
+            readySuspendedListPanel.removeAll();
+            
+            for (Object nodeObj : os.getReadySuspendedProcesses()) {
+                OS_Structures.ProcessNode node = (OS_Structures.ProcessNode) nodeObj;
+                createProcessCard(node.getElement(), readySuspendedListPanel);
+            }
+            
+            readySuspendedListPanel.revalidate();
+            readySuspendedListPanel.repaint();
+            
+        } finally {
+            os.getReadySem().release();
+        }
+    }
+
+    private void refreshBlockedList() throws InterruptedException {
+        if (os == null || os.getBlockedSem() == null) return;
+        
+        os.getBlockedSem().acquire(); // Bloquear las listas 'Blocked'
+        try {
+            blockedListPanel.removeAll();
+            
+            // Iterar sobre tu 'HashMap' (usando el método getKeys() que vi en tu código)
+            Structures.List<Integer> keys = os.getBlockedProcesses().getKeys();
+            for (Integer key : keys) {
+                OS_Structures.OS_Process p = os.getBlockedProcesses().getValueOfKey(key);
+                createProcessCard(p, blockedListPanel);
+            }
+            
+            blockedListPanel.revalidate();
+            blockedListPanel.repaint();
+            
+        } finally {
+            os.getBlockedSem().release();
+        }
+    }
+
+    private void refreshBlockedSuspendedList() throws InterruptedException {
+        if (os == null || os.getBlockedSem() == null) return;
+        
+        os.getBlockedSem().acquire(); // Bloquear las listas 'Blocked'
+        try {
+            blockedSuspendedListPanel.removeAll();
+            
+            Structures.List<Integer> keys = os.getBlockedSuspendedProcesses().getKeys();
+            for (Integer key : keys) {
+                OS_Structures.OS_Process p = os.getBlockedSuspendedProcesses().getValueOfKey(key);
+                createProcessCard(p, blockedSuspendedListPanel);
+            }
+            
+            blockedSuspendedListPanel.revalidate();
+            blockedSuspendedListPanel.repaint();
+            
+        } finally {
+            os.getBlockedSem().release();
+        }
+    }
+
+    private void refreshFinishedList() {
+        if (os == null) return;
+        
+        // No necesitamos semáforo para 'Exit' si el OS solo añade
+        // y la GUI solo lee (pero es buena práctica si tuvieras que limpiarla).
+        finishedListPanel.removeAll();
+        for (OS_Structures.OS_Process p : os.getExitProcesses()) {
+            createProcessCard(p, finishedListPanel);
+        }
+        finishedListPanel.revalidate();
+        finishedListPanel.repaint();
+    }
+    
+    /**
+     * ESTE MÉTODO YA NO ES NECESARIO, PUEDES BORRARLO.
+     * La lógica ahora está en refreshAllQueues().
+     */
+    // public void addNewProcessToView(OS_Process process) { ... }
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -215,13 +409,16 @@ public class GUI extends javax.swing.JFrame {
         nameLabel = new javax.swing.JLabel();
         nameField = new javax.swing.JTextField();
         priorityLabel = new javax.swing.JLabel();
-        maxRunTimeLabel = new javax.swing.JLabel();
-        maxRunTimeField = new javax.swing.JTextField();
         pileLabel = new javax.swing.JLabel();
         pileField = new javax.swing.JTextField();
         createProcessButton = new javax.swing.JButton();
         prioritySpinner = new javax.swing.JSpinner();
         create10ProcessButton = new javax.swing.JButton();
+        cyclesToCompleteField = new javax.swing.JTextField();
+        cyclesToCallField = new javax.swing.JTextField();
+        cyclesToCallLabel = new javax.swing.JLabel();
+        cyclesToCompleteLabel = new javax.swing.JLabel();
+        ioBoundCheckBox = new javax.swing.JCheckBox();
         jPanel2 = new javax.swing.JPanel();
         cycleConfigLabel = new javax.swing.JLabel();
         durationLabel = new javax.swing.JLabel();
@@ -264,8 +461,10 @@ public class GUI extends javax.swing.JFrame {
         newProcessListPanel = new javax.swing.JPanel();
         jPanel4 = new javax.swing.JPanel();
         readyScrollPane2 = new javax.swing.JScrollPane();
-        CPUPanel = new javax.swing.JPanel();
+        runningProcessPanel = new javax.swing.JPanel();
         mainMemoryLabel1 = new javax.swing.JLabel();
+        memoryTotalLabel = new javax.swing.JLabel();
+        memoryFreeLabel = new javax.swing.JLabel();
         graphicsPanel = new javax.swing.JPanel();
         logPanel = new javax.swing.JPanel();
         logScrollPane = new javax.swing.JScrollPane();
@@ -283,22 +482,25 @@ public class GUI extends javax.swing.JFrame {
 
         jPanel1.setBackground(new java.awt.Color(225, 225, 225));
         jPanel1.setBorder(javax.swing.BorderFactory.createEtchedBorder());
+        jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
         jLabel1.setText("Creacion de procesos");
+        jPanel1.add(jLabel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 10, -1, -1));
 
         nameLabel.setText("Nombre:");
+        jPanel1.add(nameLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(13, 39, -1, -1));
 
         nameField.setPreferredSize(new java.awt.Dimension(180, 22));
+        jPanel1.add(nameField, new org.netbeans.lib.awtextra.AbsoluteConstraints(87, 36, -1, -1));
 
         priorityLabel.setText("Prioridad:");
-
-        maxRunTimeLabel.setText("T. Máx:");
-
-        maxRunTimeField.setPreferredSize(new java.awt.Dimension(180, 22));
+        jPanel1.add(priorityLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(8, 67, -1, -1));
 
         pileLabel.setText("T. Pila:");
+        jPanel1.add(pileLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(25, 95, -1, -1));
 
         pileField.setPreferredSize(new java.awt.Dimension(180, 22));
+        jPanel1.add(pileField, new org.netbeans.lib.awtextra.AbsoluteConstraints(87, 92, -1, -1));
 
         createProcessButton.setText("Crear Proceso");
         createProcessButton.addActionListener(new java.awt.event.ActionListener() {
@@ -306,9 +508,11 @@ public class GUI extends javax.swing.JFrame {
                 createProcessButtonActionPerformed(evt);
             }
         });
+        jPanel1.add(createProcessButton, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 220, 124, -1));
 
         prioritySpinner.setModel(new javax.swing.SpinnerNumberModel(1, 1, 99, 1));
         prioritySpinner.setPreferredSize(new java.awt.Dimension(180, 22));
+        jPanel1.add(prioritySpinner, new org.netbeans.lib.awtextra.AbsoluteConstraints(87, 64, -1, -1));
 
         create10ProcessButton.setText("Crear 10 Procesos");
         create10ProcessButton.addActionListener(new java.awt.event.ActionListener() {
@@ -316,66 +520,31 @@ public class GUI extends javax.swing.JFrame {
                 create10ProcessButtonActionPerformed(evt);
             }
         });
+        jPanel1.add(create10ProcessButton, new org.netbeans.lib.awtextra.AbsoluteConstraints(150, 220, -1, -1));
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(jPanel1Layout.createSequentialGroup()
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel1)
-                            .addGroup(jPanel1Layout.createSequentialGroup()
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(maxRunTimeLabel)
-                                    .addComponent(nameLabel, javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(priorityLabel, javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(pileLabel, javax.swing.GroupLayout.Alignment.TRAILING))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(nameField, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(maxRunTimeField, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(pileField, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(prioritySpinner, javax.swing.GroupLayout.PREFERRED_SIZE, 180, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                        .addGap(0, 12, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(createProcessButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(create10ProcessButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
-                .addContainerGap())
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
-                .addComponent(jLabel1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(nameLabel)
-                    .addComponent(nameField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(priorityLabel)
-                    .addComponent(prioritySpinner, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(maxRunTimeLabel)
-                    .addComponent(maxRunTimeField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(pileLabel)
-                    .addComponent(pileField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(createProcessButton)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(create10ProcessButton)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-        );
+        cyclesToCompleteField.setText("0");
+        cyclesToCompleteField.setPreferredSize(new java.awt.Dimension(180, 22));
+        jPanel1.add(cyclesToCompleteField, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 180, 85, -1));
 
-        simulatorPanel.add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 40, -1, -1));
+        cyclesToCallField.setText("0");
+        cyclesToCallField.setPreferredSize(new java.awt.Dimension(180, 22));
+        jPanel1.add(cyclesToCallField, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 150, 100, -1));
+
+        cyclesToCallLabel.setText("Ciclos Excepción:");
+        jPanel1.add(cyclesToCallLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 150, 105, 20));
+
+        cyclesToCompleteLabel.setText("Duración Excepción:");
+        jPanel1.add(cyclesToCompleteLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 180, -1, 20));
+
+        ioBoundCheckBox.setText("Proceso I/O Bound");
+        ioBoundCheckBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                ioBoundCheckBoxActionPerformed(evt);
+            }
+        });
+        jPanel1.add(ioBoundCheckBox, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 120, -1, -1));
+
+        simulatorPanel.add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 40, 300, 260));
 
         jPanel2.setBackground(new java.awt.Color(225, 225, 225));
         jPanel2.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -420,6 +589,11 @@ public class GUI extends javax.swing.JFrame {
 
         quantumField.setText("100");
         quantumField.setPreferredSize(new java.awt.Dimension(60, 22));
+        quantumField.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                quantumFieldActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
@@ -719,12 +893,12 @@ public class GUI extends javax.swing.JFrame {
         readyScrollPane2.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         readyScrollPane2.setVerticalScrollBarPolicy(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
 
-        CPUPanel.setBackground(new java.awt.Color(240, 240, 240));
-        CPUPanel.setLayout(new javax.swing.BoxLayout(CPUPanel, javax.swing.BoxLayout.Y_AXIS));
+        runningProcessPanel.setBackground(new java.awt.Color(240, 240, 240));
+        runningProcessPanel.setLayout(new javax.swing.BoxLayout(runningProcessPanel, javax.swing.BoxLayout.Y_AXIS));
 
         readyListPanel.setLayout(new BoxLayout(readyListPanel, BoxLayout.Y_AXIS));
 
-        readyScrollPane2.setViewportView(CPUPanel);
+        readyScrollPane2.setViewportView(runningProcessPanel);
 
         mainMemoryLabel1.setBackground(new java.awt.Color(0, 0, 0));
         mainMemoryLabel1.setFont(new java.awt.Font("Segoe UI", 1, 17)); // NOI18N
@@ -751,7 +925,13 @@ public class GUI extends javax.swing.JFrame {
                 .addGap(14, 14, 14))
         );
 
-        simulatorPanel.add(jPanel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(70, 280, 190, 220));
+        simulatorPanel.add(jPanel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 310, 190, 220));
+
+        memoryTotalLabel.setText("0");
+        simulatorPanel.add(memoryTotalLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(680, 560, -1, -1));
+
+        memoryFreeLabel.setText("jLabel2");
+        simulatorPanel.add(memoryFreeLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(670, 610, -1, -1));
 
         jTabbedPane1.addTab("Simulador", simulatorPanel);
 
@@ -786,7 +966,7 @@ public class GUI extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 1527, Short.MAX_VALUE)
+            .addComponent(jTabbedPane1)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -796,59 +976,89 @@ public class GUI extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void create10ProcessButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_create10ProcessButtonActionPerformed
-        if (this.os == null) {
-            addLogMessage("ERROR: OperatingSystem no está inicializado.");
-            return;
-        }
-
-        addLogMessage("==> Creando 10 procesos batch...");
-        for (int i = 1; i <= 10; i++) {
-            String name = "Batch_" + i;
-            long maxRunTime = 10000;
-            long pile = 1024;
-            int priority = 5;
-            os.createNewProcess(name, maxRunTime, pile, priority);
-        }
-        addLogMessage("==> 10 procesos creados.");
-    }//GEN-LAST:event_create10ProcessButtonActionPerformed
-
-    private void createProcessButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_createProcessButtonActionPerformed
-        if (this.os == null) {
-            addLogMessage("ERROR: OperatingSystem no está inicializado.");
-            return;
-        }
-
-        String name = nameField.getText().trim();
-        int priority = (Integer) prioritySpinner.getValue();
-        String maxRunTimeStr = maxRunTimeField.getText().trim();
-        String pileStr = pileField.getText().trim();
-
-        if (name.isEmpty() || maxRunTimeStr.isEmpty() || pileStr.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Por favor, complete los campos 'Nombre', 'T. Máx' y 'Memoria'.", "Campos incompletos", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
+    private void createProcessButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                  
         try {
-            long maxRunTime = Long.parseLong(maxRunTimeStr);
-            long pile = Long.parseLong(pileStr);
+            String name = nameField.getText();
+            int priority = (int) prioritySpinner.getValue();
+            long pile = Long.parseLong(pileField.getText());
 
-            if (maxRunTime <= 0 || pile <= 0) {
-                JOptionPane.showMessageDialog(this, "Los valores numéricos (t. máx, memoria) deben ser positivos.", "Valores inválidos", JOptionPane.WARNING_MESSAGE);
+            long cyclesToCall = 0;
+            long cyclesToComplete = 0;
+            boolean isIOBound = ioBoundCheckBox.isSelected();
+
+            if (name.trim().isEmpty() || pile <= 0) {
+                JOptionPane.showMessageDialog(this, "Nombre inválido o T. Pila debe ser positivo.", "Error de Validación", JOptionPane.ERROR_MESSAGE);
                 return;
             }
+            
+            // --- INICIO DE LA MODIFICACIÓN ---
+            // Validar contra la memoria TOTAL del sistema
+            if (os != null && pile > os.getMemorySpace()) {
+                JOptionPane.showMessageDialog(this, 
+                    "El T. Pila (" + pile + " KB) no puede exceder la memoria total del sistema (" + os.getMemorySpace() + " KB).", 
+                    "Error de Validación", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            // --- FIN DE LA MODIFICACIÓN ---
 
-            os.createNewProcess(name, maxRunTime, pile, priority);
+            // Lógica de I/O Bound
+            if (isIOBound) {
+                cyclesToCall = Long.parseLong(cyclesToCallField.getText());
+                cyclesToComplete = Long.parseLong(cyclesToCompleteField.getText());
 
+                if (cyclesToCall <= 0 || cyclesToComplete <= 0) {
+                    JOptionPane.showMessageDialog(this, "Para procesos I/O Bound, ambos ciclos de excepción deben ser mayores a 0.", "Error de Validación", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+            // Si no, cyclesToCall y cyclesToComplete quedan en 0 (CPU-Bound)
+
+            os.createNewProcess(name, priority, pile, cyclesToCall, cyclesToComplete);
+
+            // Limpiar campos
             nameField.setText("");
-            prioritySpinner.setValue(1);
-            maxRunTimeField.setText("");
             pileField.setText("");
+            prioritySpinner.setValue(1);
+            cyclesToCallField.setText("0");
+            cyclesToCompleteField.setText("0");
 
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Por favor, ingrese números válidos para t. máx y memoria.", "Error de formato", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Por favor, ingrese valores numéricos válidos para T. Pila y Ciclos.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error creando proceso: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            logger.log(java.util.logging.Level.SEVERE, "Error en createProcessButtonActionPerformed", e);
         }
-    }//GEN-LAST:event_createProcessButtonActionPerformed
+    }
+
+    private void create10ProcessButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                    
+        try {
+            java.util.Random rand = new java.util.Random();
+            for (int i = 0; i < 10; i++) {
+                String name = "Proc-" + (os.getProcessIdCounter() + i);
+                int priority = rand.nextInt(99) + 1; // Prioridad entre 1 y 99
+                long pile = rand.nextInt(1000) + 100; // Pila entre 100 y 1100 KB
+
+                // --- Lógica de I/O Bound Aleatoria ---
+                long cyclesToCall = 0;
+                long cyclesToComplete = 0;
+
+                // 50% de probabilidad de ser I/O-Bound
+                if (rand.nextBoolean()) { 
+                    cyclesToCall = rand.nextInt(100) + 10;     // Ciclos para llamar: 10-110
+                    cyclesToComplete = rand.nextInt(50) + 5; // Ciclos para completar: 5-55
+                }
+                // Si no entra en el if, los valores quedan en 0 (CPU-Bound)
+                // --- Fin Lógica I/O Bound ---
+
+                // Llamamos a la función actualizada
+                os.createNewProcess(name, priority, pile, cyclesToCall, cyclesToComplete);
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error creando 10 procesos: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            logger.log(java.util.logging.Level.SEVERE, "Error en create10ProcessButtonActionPerformed", e);
+        }
+    }
 
     private void setScheduleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setScheduleButtonActionPerformed
         if (this.os == null) {
@@ -878,14 +1088,67 @@ public class GUI extends javax.swing.JFrame {
         currentScheduleValueLabel.setText(selectedSchedule + (quantumValue > 0 ? " (Q=" + quantumValue + ")" : ""));
     }//GEN-LAST:event_setScheduleButtonActionPerformed
 
-    private void scheduleComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_scheduleComboBoxActionPerformed
-        String selectedSchedule = (String) scheduleComboBox.getSelectedItem();
-        boolean isRR = "RR".equals(selectedSchedule);
+    private void scheduleComboBoxActionPerformed(java.awt.event.ActionEvent evt) {                                                 
+        // 1. Obtener el schedule seleccionado del ComboBox
+        OS_Structures.Schedule selectedSchedule;
+        String selection = (String) scheduleComboBox.getSelectedItem();
 
-        quantumLabel.setVisible(isRR);
-        quantumField.setVisible(isRR);
-    }//GEN-LAST:event_scheduleComboBoxActionPerformed
+        // 2. Convertir el String a la enumeración
+        switch (selection) {
+            case "FIFO":
+                selectedSchedule = OS_Structures.Schedule.FIFO;
+                break;
+            
+            // --- INICIO DE LA CORRECCIÓN ---
+            // Asegúrate de que este texto coincida 100% con el JComboBox
+            case "Round Robin": 
+            // (Si en tu ComboBox dice "RR", cambia esta línea a: case "RR":)
+                selectedSchedule = OS_Structures.Schedule.ROUND_ROBIN;
+                break;
+            // --- FIN DE LA CORRECCIÓN ---
+                
+            case "Priority":
+                selectedSchedule = OS_Structures.Schedule.PRIORITY;
+                break;
+            case "Shortest Next":
+                selectedSchedule = OS_Structures.Schedule.SHORTEST_NEXT;
+                break;
+            case "Shortest Remaining":
+                selectedSchedule = OS_Structures.Schedule.SHORTEST_REMAINING_TIME;
+                break;
+            case "Highest Response Ratio":
+                selectedSchedule = OS_Structures.Schedule.HIGHEST_RESPONSE_RATIO;
+                break;
+            case "Feedback":
+                selectedSchedule = OS_Structures.Schedule.FEEDBACK;
+                break;
+            default:
+                selectedSchedule = OS_Structures.Schedule.PRIORITY; // Fallback
+        }
 
+        // 3. Lógica para mostrar/ocultar el Quantum
+        boolean isRoundRobin = (selectedSchedule == OS_Structures.Schedule.ROUND_ROBIN);
+        quantumLabel.setVisible(isRoundRobin);
+        quantumField.setVisible(isRoundRobin);
+
+        // 4. Llamar a los setters del Sistema Operativo
+        if (os != null) {
+            os.setSchedule(selectedSchedule);
+            
+            if (isRoundRobin) {
+                try {
+                    long quantum = Long.parseLong(quantumField.getText());
+                    if (quantum > 0) {
+                        os.setQuantum(quantum);
+                    }
+                } catch (NumberFormatException e) {
+                    // Si el campo está vacío (ej. "1"), pone 1 por defecto
+                    quantumField.setText("1");
+                    os.setQuantum(1);
+                }
+            }
+        }
+    }
     private void setDurationButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setDurationButtonActionPerformed
         if (this.os == null) {
             addLogMessage("ERROR: OperatingSystem no está inicializado.");
@@ -923,6 +1186,42 @@ public class GUI extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_jTabbedPane1HierarchyChanged
 
+    private void ioBoundCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ioBoundCheckBoxActionPerformed
+        boolean isIOBound = ioBoundCheckBox.isSelected();
+
+            // Habilitar o deshabilitar los componentes
+            cyclesToCallField.setEnabled(isIOBound);
+            cyclesToCompleteField.setEnabled(isIOBound);
+            cyclesToCallLabel.setEnabled(isIOBound);
+            cyclesToCompleteLabel.setEnabled(isIOBound);
+
+            // Si se deshabilita (vuelve a CPU-Bound), limpiar los campos a 0
+            if (!isIOBound) {
+                cyclesToCallField.setText("0");
+                cyclesToCompleteField.setText("0");
+            }
+    }//GEN-LAST:event_ioBoundCheckBoxActionPerformed
+
+    private void quantumFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_quantumFieldActionPerformed
+        try {
+            long newQuantum = Long.parseLong(quantumField.getText());
+            
+            // Validar que el quantum sea positivo
+            if (newQuantum > 0 && os != null) {
+                // Llamar solo al setter del quantum
+                os.setQuantum(newQuantum);
+                JOptionPane.showMessageDialog(this, "Quantum actualizado a " + newQuantum, "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            } else if (newQuantum <= 0) {
+                JOptionPane.showMessageDialog(this, "El Quantum debe ser positivo.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+            
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Por favor, ingrese un número válido para el Quantum.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
+        }
+    }//GEN-LAST:event_quantumFieldActionPerformed
+
+                                                  
+   
     /**
      * @param args the command line arguments
      */
@@ -956,7 +1255,6 @@ public class GUI extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel CPUPanel;
     private javax.swing.JLabel blockedLabel;
     private javax.swing.JPanel blockedListPanel;
     private javax.swing.JScrollPane blockedScrollPane;
@@ -972,12 +1270,17 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JLabel cycleConfigLabel;
     private javax.swing.JLabel cycleLabel;
     private javax.swing.JLabel cycleStatusLabel;
+    private javax.swing.JTextField cyclesToCallField;
+    private javax.swing.JLabel cyclesToCallLabel;
+    private javax.swing.JTextField cyclesToCompleteField;
+    private javax.swing.JLabel cyclesToCompleteLabel;
     private javax.swing.JTextField durationField;
     private javax.swing.JLabel durationLabel;
     private javax.swing.JLabel finishedLabel;
     private javax.swing.JPanel finishedListPanel;
     private javax.swing.JScrollPane finishedScrollPane;
     private javax.swing.JPanel graphicsPanel;
+    private javax.swing.JCheckBox ioBoundCheckBox;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
@@ -990,8 +1293,8 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JLabel mainMemoryLabel;
     private javax.swing.JLabel mainMemoryLabel1;
     private javax.swing.JPanel mainMemoryPanel;
-    private javax.swing.JTextField maxRunTimeField;
-    private javax.swing.JLabel maxRunTimeLabel;
+    private javax.swing.JLabel memoryFreeLabel;
+    private javax.swing.JLabel memoryTotalLabel;
     private javax.swing.JTextField nameField;
     private javax.swing.JLabel nameLabel;
     private javax.swing.JLabel newProcessLabel;
@@ -1010,6 +1313,7 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JLabel readySuspendedLabel;
     private javax.swing.JPanel readySuspendedListPanel;
     private javax.swing.JScrollPane readySuspendedScrollPane;
+    private javax.swing.JPanel runningProcessPanel;
     private javax.swing.JComboBox<String> scheduleComboBox;
     private javax.swing.JLabel scheduleLabel;
     private javax.swing.JLabel secondaryMemoryLabel;

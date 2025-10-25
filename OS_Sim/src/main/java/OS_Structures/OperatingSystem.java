@@ -4,12 +4,12 @@
  */
 package OS_Structures;
 import Structures.*;
-import java.time.Duration;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import main.GUI;
 import main.Inicio;
 import java.util.logging.Logger; 
+
 
 /**
  *
@@ -23,20 +23,25 @@ public class OperatingSystem {
     private volatile boolean isCycleInSeconds; 
     public static long cycleCounter = 0;
     public volatile long programCounter = 0;
-    private Schedule schedule = Schedule.PRIORITY;
-    private long quantum = 1;
-    private Schedule changedSched = Schedule.PRIORITY;
-    private long changedQuant = 1;
-    private boolean isInKernel = true;
+    
+    private volatile Schedule schedule = Schedule.PRIORITY;
+    private volatile long quantum = 1;
+    private volatile Schedule changedSched = Schedule.PRIORITY;
+    private volatile long changedQuant = 1;
+    private volatile int processIdCounter = 0; 
+    
+    private volatile boolean isInKernel = true;
     private long memorySpace;
-    private long memoryFree;
+    private volatile long memoryFree; 
+    
     private ReadyList readyProcesses;
     private ReadyList readySuspendedProcesses;
     private HashMap<Integer, OS_Process> blockedProcesses;
     private HashMap<Integer, OS_Process> blockedSuspendedProcesses;
     private List<OS_Process> newProcesses;
-    private OS_Process runningProcess;
     private List<OS_Process> exitProcesses;
+    
+    private volatile OS_Process runningProcess;
     private GUI ventana;
     private Semaphore readySem;
     private Semaphore blockedSem;
@@ -60,15 +65,16 @@ public class OperatingSystem {
             } catch (InterruptedException ex) {
                 System.getLogger(OperatingSystem.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
             }
+ 
             blockedProcesses.put(this.process.getId(), this.process);
             blockedSem.release();
+            
             Thread IO = new Thread(()->{
             try {
                 for (; this.pileIO>0; this.pileIO--) {
                     Thread.sleep(getCycleDuration());
                 }
             } catch (InterruptedException e) {
-                // Modificado: Enviar a la GUI
                 ventana.addLogMessage("---> Proceso interrumpido");
             }
         });
@@ -85,12 +91,15 @@ public class OperatingSystem {
             } catch (InterruptedException ex) {
                 System.getLogger(OperatingSystem.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
             }
+            
             boolean isInMemory = true;
             OS_Process p = blockedProcesses.deleteEntry(this.process.getId());
-            if (p==null){
-                isInMemory=false;
-                blockedSuspendedProcesses.deleteEntry(this.process.getId());
+            
+            if (p == null){ 
+                isInMemory = false;
+                OS_Process p2 = blockedSuspendedProcesses.deleteEntry(this.process.getId());
             }
+            
             blockedSem.release();
             try {
                 readySem.acquire();
@@ -100,33 +109,33 @@ public class OperatingSystem {
             if (isInMemory) {
                 process.setState(Status.READY);
                 readyProcesses.insert(process);
+                readySem.release();
                 return;
             }
             process.setState(Status.READY_SUSPENDED);
             readySuspendedProcesses.insert(process);
+            
+            readySem.release(); 
         }
         
     }
     
-    // Campo para mantener una referencia al hilo
     private cvs_manager_configuracion configManager;
     private Thread counterThread;
     
     public OperatingSystem() {
         this.isCycleInSeconds = true;
         this.cycleDuration = 1000; 
-        this.ventana = new GUI();
         this.readyProcesses = new ReadyList();
         this.readySuspendedProcesses = new ReadyList();
         this.blockedProcesses = new HashMap(20);
         this.blockedSuspendedProcesses = new HashMap(20);
         this.newProcesses = new List();
-        this.runningProcess = null;
         this.exitProcesses = new List();
+        this.runningProcess = null;
         this.readySem = new Semaphore(1);
         this.blockedSem = new Semaphore(1);
         this.newSem = new Semaphore(1);
-        this.ventana.setOperatingSystem(this); 
         this.configManager = new cvs_manager_configuracion();
         this.memorySpace = this.memoryFree = 1000000;
     }
@@ -138,13 +147,12 @@ public class OperatingSystem {
 
         if (inicioDialog.isStarted()) {
             setMemorySpace(inicioDialog.getMemorySpace());
+            this.memoryFree = this.memorySpace; 
             setCycleDuration(inicioDialog.getCycleDuration(), inicioDialog.getUnit());
             
-
             String initialScheduleStr = inicioDialog.getSchedule(); 
             Schedule initialScheduleEnum; 
             
-
             if ("Priority".equalsIgnoreCase(initialScheduleStr)) {
                 initialScheduleEnum = Schedule.PRIORITY;
             } else if ("Round Robin".equalsIgnoreCase(initialScheduleStr)) {
@@ -162,14 +170,17 @@ public class OperatingSystem {
                 try {
                     while (true) {
                         manageSchedule();
+                        Thread.sleep(10); 
                     }
                 } catch (InterruptedException ex) {
                     System.getLogger(OperatingSystem.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
                 }
             });
             mainThread.setDaemon(true);
+            
             this.ventana = new GUI();
             this.ventana.setOperatingSystem(this); 
+            
             this.startSystem();
             mainThread.start();
             
@@ -227,9 +238,13 @@ public class OperatingSystem {
                     Thread.sleep(this.cycleDuration);
                     cycleCounter++;
                     ventana.updateCycleCount(cycleCounter);
-                    if (!this.isInKernel && programCounter>0) {
+                    
+                    if (!this.isInKernel && programCounter > 0) {
                         programCounter--;
-                        runningProcess.runInstruction(); //Esto regresa el objeto del proceso, pasar esto a la función de actualización de la GUI
+  
+                        if (runningProcess != null) {
+                            runningProcess.runInstruction();
+                        }
                     }
 
                 } catch (InterruptedException e) {
@@ -240,7 +255,6 @@ public class OperatingSystem {
         this.counterThread.setDaemon(true); 
         this.counterThread.start();
         ventana.setVisible(true);
-        // ventana.setLocationRelativeTo(null); // Quitado para que setExtendedState funcione
         ventana.addLogMessage("Sistema iniciado. Espacio de memoria total: " + this.memorySpace + " KB.");
         ventana.addLogMessage("Algoritmo de planificación: " + this.schedule);
         
@@ -260,17 +274,21 @@ public class OperatingSystem {
     public long getMemorySpace() {
         return memorySpace;
     }
+    
+    public long getMemoryFree() {
+        return memoryFree;
+    }
 
     public void setMemorySpace(long memorySpace) {
         this.memorySpace = memorySpace;
     }
     
-    public void setQuantum(long q) {
-        this.quantum = q;
+    public void setSchedule(Schedule newSchedule) {
+        this.changedSched = newSchedule;
     }
     
-    public long getQuantum() {
-        return quantum;
+    public void setQuantum(long newQuantum) {
+        this.changedQuant = newQuantum;
     }
 
     public void switchSchedule(Schedule schedule, long quantum) {
@@ -284,10 +302,15 @@ public class OperatingSystem {
     
     private void setScheduleType(Schedule schedule) {
         this.schedule = schedule;
+        this.changedSched = schedule;
     }
     
     public Schedule getScheduleType() {
         return this.schedule;
+    }
+    
+    public long getQuantum() {
+        return this.quantum;
     }
 
     public void saveCurrentConfiguration(String configName) {
@@ -306,69 +329,188 @@ public class OperatingSystem {
         configManager.guardarConfiguracion(fileName, getScheduleType().toString(), getMemorySpace(), durationValue, unit);
     }
     
-    public void createNewProcess(String name, long maxRunTime, long pile, int priority) {
+    
+    public int getProcessIdCounter() {
+        return this.processIdCounter;
+    }
 
+    public void createNewProcess(String name, int priority, long pile, long cyclesToCallException, long cyclesToCompleteException) {
+        try {
+            int id = this.processIdCounter++;
             long birthTime = getCounter();
 
-            // --- REQUERIMIENTO 2: Cambiar nombre ---
-            // El nombre ahora incluye el tiempo de creación (ciclo)
-            String finalName = name + " (T" + birthTime + ")";
+            OS_Process newProcess = new OS_Process(
+                    name, 
+                    id, 
+                    priority, 
+                    pile, 
+                    birthTime, 
+                    cyclesToCallException, 
+                    cyclesToCompleteException
+            );
 
-            // --- REQUERIMIENTO 1: ID no negativo ---
-            int id = (finalName + birthTime).hashCode(); // Usar finalName para el hash
-            id = Math.abs(id); // Asegurar que el ID sea positivo
+            this.newSem.acquire();
+            this.newProcesses.insertFinal(newProcess);
+            this.newSem.release();
 
-            // --- CORRECCIÓN 4 (previa) ---
-            // Se agregó el argumento pileIO (como 0) para coincidir con el constructor de 7 argumentos
-            OS_Process newProcess = new OS_Process(finalName, id, priority, birthTime, maxRunTime, pile, 0); // Usar finalName
-
-            this.newProcesses.insertFinal(newProcess); 
-
-            if (ventana != null) {
-                // --- CORRECCIÓN DE ESTA SOLICITUD ---
-                // Se cambió "Mem: ... KB" por "Pila: ... inst." para reflejar que 'pile' son instrucciones.
+             if (ventana != null) {
                 ventana.addLogMessage("PROCESO CREADO: " + newProcess.getName() + 
                                       " [ID: " + newProcess.getId() + 
                                       ", Prio: " + newProcess.getPriority() + 
-                                      ", T.Max: " + newProcess.getMaxRunTime() + "ms" +
-                                      ", Pila: " + newProcess.getPile() + " inst.]" +
-                                      " en Ciclo " + newProcess.getBirthTime());
+                                      ", Pila: " + newProcess.getPile() + " inst." +
+                                      ", I/O: " + (newProcess.isIOBound() ? "Si" : "No") + 
+                                      "] en Ciclo " + newProcess.getBirthTime());
+            }
 
-                ventana.addNewProcessToView(newProcess);
+        } catch (InterruptedException e) {
+            logger.log(Level.SEVERE, "Error al adquirir semáforo en createNewProcess", e);
+            Thread.currentThread().interrupt(); 
+        }
+    }
+
+
+    /**
+     * Espera mientras se ejecuta el proceso y permite preemption.
+     * @param currentlyRunning El proceso que está en la CPU.
+     */
+    private void runPreemptive(OS_Process currentlyRunning) {
+        while (programCounter > 0) {
+            OS_Process bestInReady = null;
+            try {
+ 
+                readySem.acquire();
+                if (!readyProcesses.isEmpty()) {
+                    bestInReady = readyProcesses.peekRoot();
+                }
+                readySem.release();
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+
+            if (bestInReady == null) {
+                try { Thread.sleep(1); } catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
+                continue;
+            }
+
+            if (bestInReady.getId() == currentlyRunning.getId()) {
+                 try { Thread.sleep(1); } catch (InterruptedException ex) { Thread.currentThread().interrupt(); }
+                continue; 
+            }
+
+            boolean preempt = false;
+            
+            switch (this.schedule) { 
+                case PRIORITY:
+                case FEEDBACK: 
+                    if (bestInReady.getPriority() < currentlyRunning.getPriority()) {
+                        preempt = true;
+                    }
+                    break;
+                    
+                case SHORTEST_REMAINING_TIME:
+                    long remainingTimeReady = bestInReady.getPile() - bestInReady.getMAR();
+                    long remainingTimeRunning = currentlyRunning.getPile() - currentlyRunning.getMAR();
+                    
+                    if (remainingTimeReady < remainingTimeRunning) {
+                        preempt = true;
+                    }
+
+                    break;
+                    
+                case ROUND_ROBIN:
+
+                    preempt = false;
+                    break;
+                    
+                default:
+
+                    preempt = false;
+                    break;
+            }
+
+            if (preempt) {
+                if (ventana != null) {
+                    ventana.addLogMessage("--> Proceso " + currentlyRunning.getId() + " PREEMPTED por Proceso " + bestInReady.getId() + " (Mejor prioridad/SRT)");
+                }
+                break; 
+            }
+ 
+            try {
+                Thread.sleep(1); 
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
             }
         }
-
-    private void runPreemptive() {
-        OS_Process top = this.readyProcesses.peekRoot();
-        while (programCounter!=0 && this.readyProcesses.peekRoot()!=top) {}
     }
+
     
     private void runNonPreemptive() {
-        while (programCounter!=0) {}
+        while (programCounter > 0) {
+            try {
+                Thread.sleep(1); 
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private void runProcess(OS_Process process) {
         runningProcess = process;
+        
+        if (ventana != null) {
+            ventana.updateRunningProcess(process);
+        }
+        
         long runTime = process.getPile()-process.getMAR();
         if (process.isIOBound()) {
             runTime = Math.min(runTime, process.getCyclesToCallException()-process.getMAR()%process.getCyclesToCallException());
         }
-        long quantum = switch (getScheduleType()) {
-            case Schedule.FEEDBACK -> Math.powExact(2, process.getTimesPreempted());
-            default -> this.quantum;
+        
+        Schedule currentSchedule = this.schedule; 
+        long currentQuantum = this.quantum;
+        
+        long quantumToUse = switch (currentSchedule) {
+            case Schedule.FEEDBACK -> (long) Math.pow(2, process.getTimesPreempted()); 
+            default -> currentQuantum;
         };
-        switch (getScheduleType()) {
-            case Schedule.ROUND_ROBIN, Schedule.FEEDBACK -> runTime = Math.min(runTime, quantum);
+        
+        switch (currentSchedule) {
+            case Schedule.ROUND_ROBIN, Schedule.FEEDBACK -> runTime = Math.min(runTime, quantumToUse);
             default -> {}
         }
+        
         this.programCounter = runTime;
         isInKernel = false;
-        switch (getScheduleType()) {
-            case Schedule.SHORTEST_REMAINING_TIME -> runPreemptive();
-            default -> runNonPreemptive();
+        
+        boolean isPreemptive = false;
+        switch (currentSchedule) { 
+            case SHORTEST_REMAINING_TIME:
+            case ROUND_ROBIN:
+            case FEEDBACK:
+            case PRIORITY: 
+                isPreemptive = true;
+                break;
+            case FIFO:
+            case SHORTEST_NEXT:
+            case HIGHEST_RESPONSE_RATIO:
+                isPreemptive = false;
+                break;
         }
+
+        if (isPreemptive) {
+            runPreemptive(process); 
+        } else {
+            runNonPreemptive();
+        }
+        
+
         isInKernel = true;
-        runningProcess = null;
+        runningProcess = null; 
+        
+        if (ventana != null) {
+            ventana.updateRunningProcess(null);
+        }
+        
         programCounter = 0;
         if (process.getMAR() == process.getPile()) {
             endProcess(process);
@@ -388,63 +530,18 @@ public class OperatingSystem {
         }
         this.readyProcesses.insert(process);
         this.readySem.release();
-        
-//        long currentDuration = getCycleDuration();
-//        int lastSizeReady = this.readyProcesses.getSize();
-//        OS_Process p = process;
-//        long maxRun =  p.getMaxRunTime();
-//        long runTime = p.getPile()-p.getProgram_counter();
-//        long runTime = Math.min(maxRun, runTime);
-//        String currentSchedule = getScheduleType();
-//        switch (currentSchedule) {
-//            case "RR", "FeedBack" -> runTime = Math.min(runTime, this.quantum);
-//            default -> {
-//            }
-//        }
-//        //No quitar esto, que el thread no sirve si la variable no es final
-//        final long runTime = runTime;
-//        Thread running = new Thread(()->{
-//            try {
-//                Thread.sleep(runTime*this.cycleDuration);
-//            } catch (InterruptedException e) {
-//                // Modificado: Enviar a la GUI
-//                ventana.addLogMessage("---> Proceso interrumpido");
-//            }
-//        });
-//        running.setDaemon(true);
-//        this.isInKernel = false;
-//        long startCycle = getCounter();
-//        running.start();
-//        while (running.isAlive()) {
-//            if (currentDuration == getCycleDuration() && currentSchedule.equals(getScheduleType()) && !("SRT".equals(currentSchedule) && lastSizeReady != this.readyProcesses.getSize())) {
-//                continue;
-//            }
-//            //Poner aquí Logs dependiendo de la razon de interrupcion
-//            
-//            /*
-//            DUDA: Al interrumpirse un proceso por cambio de duracion de ciclo o de planificacion
-//            se deja que el proceso se interrumpe por completo y que se regrese a Listos
-//            o que en esos dos casos se resuma su ejecucion pero ajustado a la nueva duracion del ciclo?????
-//            */
-//            long endCycle = getCounter();
-//            running.interrupt();
-//            long newRunTime = endCycle-startCycle;
-//            if (newRunTime > runTime) {
-//                break;
-//            }
-//            runTime = newRunTime;
-//        }
-//        
-//        p.setProgram_counter(p.getProgram_counter()+runTime);
-//        this.isInKernel = true;
-//        return p;
     }
     
     private void endProcess(OS_Process process) {
         process.setState(Status.EXIT);
         process.setTotalTime(OperatingSystem.cycleCounter);
+        
         exitProcesses.insertFinal(process);
-        this.memoryFree+=process.getPile();        
+        
+        this.memoryFree += process.getPile();
+        if (ventana != null) {
+            ventana.addLogMessage("--> Proceso " + process.getId() + " finalizado. Memoria liberada: " + process.getPile() + " KB. Total libre: " + this.memoryFree + " KB.");
+        }
     }
     
     private void startProcessIO(OS_Process process) {
@@ -453,8 +550,23 @@ public class OperatingSystem {
         IOThread.start();
     }
     
-    //Manegar excepción con un Try-Catch al momento de llamar el thread con esta funcion
     private void manageSchedule() throws InterruptedException {
+        
+        // 1. Aplicar cambios de Planificación
+        if (this.schedule != this.changedSched) {
+            this.schedule = this.changedSched;
+            this.readyProcesses.switchSchedule(this.schedule);
+            this.readySuspendedProcesses.switchSchedule(this.schedule);
+            ventana.addLogMessage("--> Planificador cambiado a: " + this.schedule);
+        }
+        
+        if (this.quantum != this.changedQuant) {
+            this.quantum = this.changedQuant;
+             ventana.addLogMessage("--> Quantum cambiado a: " + this.quantum);
+        }
+        
+        
+        // 2. Ejecutar un proceso si es posible
         if (!readyProcesses.isEmpty()) {
             this.readySem.acquire();
             OS_Process process = readyProcesses.extractRoot();
@@ -462,34 +574,63 @@ public class OperatingSystem {
             process.setState(Status.RUNNING);
             runProcess(process);
         }
-        this.readySem.acquire();
-        this.readyProcesses.switchSchedule(changedSched);
-        this.readySuspendedProcesses.switchSchedule(changedSched);
-        this.quantum = this.changedQuant;
+        
+        // 3. Admitir nuevos procesos (New -> Ready-Suspended)
+        this.readySem.acquire(); 
         this.newSem.acquire();
+        
         for (OS_Process p:this.newProcesses) {
-            p.setState(Status.READY);
+            p.setState(Status.READY_SUSPENDED); 
             this.readySuspendedProcesses.insert(p);
         }
         this.newProcesses = new List();
+        
         this.newSem.release();
-        this.blockedSem.acquire();
+        
+        // 4. Admitir procesos en memoria (Ready-Suspended -> Ready)
         while (!this.readySuspendedProcesses.isEmpty()) {
-            if (this.readySuspendedProcesses.peekRoot().getPile()>this.memoryFree) {
+            if (this.readySuspendedProcesses.peekRoot().getPile() > this.memoryFree) {
                 break;
             }
             ProcessNode Pnode = this.readySuspendedProcesses.extractRootNode();
-            memoryFree-=Pnode.getElement().getPile();
+            memoryFree -= Pnode.getElement().getPile();
             Pnode.getElement().setState(Status.READY);
             this.readyProcesses.insertNode(Pnode);
+            ventana.addLogMessage("--> Proceso " + Pnode.getElement().getId() + " admitido en memoria. Memoria libre: " + memoryFree + " KB.");
         }
+        
+        this.readySem.release();
+        
+        // 5. Lógica de Swapping (Blocked -> Blocked-Suspended)
+        this.blockedSem.acquire();
+        
         List<Integer> keys = this.blockedProcesses.getKeys();
         while (true) {
             if (this.readySuspendedProcesses.isEmpty() || this.blockedProcesses.isEmpty()) {
                 break;
             }
-            
+            // (Lógica de swapping incompleta)
+            break; 
+        }
+        this.blockedSem.release();
+        
+        // 6. Refrescar la GUI
+        if (ventana != null) {
+            ventana.refreshAllQueues();
         }
     }
 
+
+    
+    public ReadyList getReadyProcesses() { return this.readyProcesses; }
+    public ReadyList getReadySuspendedProcesses() { return this.readySuspendedProcesses; }
+    public HashMap<Integer, OS_Process> getBlockedProcesses() { return this.blockedProcesses; }
+    public HashMap<Integer, OS_Process> getBlockedSuspendedProcesses() { return this.blockedSuspendedProcesses; }
+    public List<OS_Process> getNewProcesses() { return this.newProcesses; }
+    public List<OS_Process> getExitProcesses() { return this.exitProcesses; }
+    
+    public Semaphore getReadySem() { return this.readySem; }
+    public Semaphore getBlockedSem() { return this.blockedSem; }
+    public Semaphore getNewSem() { return this.newSem; }
+    
 }

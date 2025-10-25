@@ -7,23 +7,28 @@ import java.util.Iterator;
 /**
  *
  * @author Miguel
+ * 
  */
 public class HashMap<K, V> implements Iterable<HashNode<K, V>> {
 
-    private ArrayList<List<HashNode<K, V>>> buckets;
+    private List<HashNode<K, V>>[] buckets;
+
+    
     private int capacity;
     private int size;
 
     public HashMap(int capacity) {
         this.capacity = capacity;
         this.size = 0;
-        this.buckets = new ArrayList(capacity);
-        
-    }
 
-    public ArrayList<List<HashNode<K, V>>> getBuckets() {
-        return buckets;
+        this.buckets = (List<HashNode<K, V>>[]) new List[capacity];
+
+        for (int i = 0; i < capacity; i++) {
+            this.buckets[i] = null;
+        }
+
     }
+    
 
     public int getCapacity() {
         return capacity;
@@ -43,66 +48,98 @@ public class HashMap<K, V> implements Iterable<HashNode<K, V>> {
     
     public V getValueOfKey(K key) {
         int index = getBucketIndex(key);
-        List<HashNode<K, V>> bucket = getBuckets().getElmenetAtIndex(index);
+        
+
+        List<HashNode<K, V>> bucket = this.buckets[index];
+
+        
         if (bucket == null) {
-            System.out.println("A Value with this Key does not exist");
+
             return null;
         }
         for (int i = 0; i < bucket.getLength(); i++) {
-            if (bucket.getElmenetAtIndex(i).getKey() == key) {
+
+            if (bucket.getElmenetAtIndex(i).getKey().equals(key)) {
+
                 return bucket.getElmenetAtIndex(i).getValue();
             }
         }
-        System.out.println("A Value with this Key does not exist");
+
         return null;
     }
     
     public void put(K key, V value) {
         int index = getBucketIndex(key);
-        List<HashNode<K, V>> bucket = getBuckets().getElmenetAtIndex(index);
+
+        List<HashNode<K, V>> bucket = this.buckets[index];
+
+        
         if (bucket == null) {
             bucket = new List();
             HashNode<K, V> node = new HashNode(key, value);
             bucket.insertBegin(node);
-            getBuckets().insertAtIndex(bucket, index);
+
+            this.buckets[index] = bucket;
+
+            
+            size++; 
         } else {
             int i = 0;
             for (; i < bucket.getLength(); i++) {
-                if (bucket.getElmenetAtIndex(i).getKey() == key) {
+                if (bucket.getElmenetAtIndex(i).getKey().equals(key)) {
                     HashNode<K, V> entry = bucket.getElmenetAtIndex(i);
                     entry.setValue(value);
-                    break;
+                    break; 
                 }
             }
             if (i == bucket.getLength()) {
                 HashNode<K, V> entry = new HashNode(key, value);
                 bucket.insertBegin(entry);
+                size++; 
             }
         }
-        size++;
+
     }
     
     public V deleteEntry(K key) {
         int index = getBucketIndex(key);
-        List<HashNode<K, V>> bucket = getBuckets().getElmenetAtIndex(index);
+        
+
+        List<HashNode<K, V>> bucket = this.buckets[index];
+
+        
         if (bucket == null) {
             System.out.println("An Entry with this Key does not exist");
             return null;
         }
         int i = 0;
         for (; i < bucket.getLength(); i++) {
-            if (bucket.getElmenetAtIndex(i).getKey() == key) {
-                HashNode<K, V> entry = bucket.getElmenetAtIndex(i);
-                return entry.getValue();
+            if (bucket.getElmenetAtIndex(i).getKey().equals(key)) {  
+                try {
+                    HashNode<K, V> entry = bucket.deleteAtIndex(i);
+                    size--; 
+                    
+                    if (bucket.isEmpty()) {
+                        this.buckets[index] = null;
+                    }
+                    
+                    return entry.getValue();
+                } catch (Exception e) {
+
+                    System.out.println("Error: 'List.java' no tiene el método 'deleteAtIndex' o falló.");
+                    return null;
+                }
             }
         }
         System.out.println("An Entry with this Key does not exist");
         return null;
     }
+   
     
     public List<K> getKeys() {
         List<K> keys = new List();
-        for (List<HashNode<K, V>> b:getBuckets()) {
+        for (List<HashNode<K, V>> b : this.buckets) { 
+            if (b == null) continue; 
             for (HashNode<K, V> node:b) {
                 keys.insertFinal(node.getKey());
             }
@@ -111,18 +148,20 @@ public class HashMap<K, V> implements Iterable<HashNode<K, V>> {
     }
     
     public List<V> getValues() {
-        List<V> keys = new List();
-        for (List<HashNode<K, V>> b:getBuckets()) {
+        List<V> values = new List(); 
+        for (List<HashNode<K, V>> b : this.buckets) { 
+            if (b == null) continue;
             for (HashNode<K, V> node:b) {
-                keys.insertFinal(node.getValue());
+                values.insertFinal(node.getValue());
             }
         }
-        return keys;
+        return values;
     }
     
     public List<HashNode<K, V>> getPairs() {
         List<HashNode<K, V>> hash = new List();
-        for (List<HashNode<K, V>> b:getBuckets()) {
+        for (List<HashNode<K, V>> b : this.buckets) { 
+            if (b == null) continue; 
             for (HashNode<K, V> node:b) {
                 hash.insertFinal(node);
             }
@@ -133,12 +172,13 @@ public class HashMap<K, V> implements Iterable<HashNode<K, V>> {
     @Override
     public Iterator<HashNode<K, V>> iterator() {
         List<HashNode<K, V>> hash = new List();
-        for (List<HashNode<K, V>> b:getBuckets()) {
+        for (List<HashNode<K, V>> b : this.buckets) { 
+            if (b == null) continue; 
             for (HashNode<K, V> node:b) {
                 hash.insertFinal(node);
             }
         }
-        return new IteratorList(hash);
+        return new IteratorList(hash); 
     }
-    
+ 
 }

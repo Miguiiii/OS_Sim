@@ -38,9 +38,9 @@ public class cvs_manager_procesos {
                     process.getName(),
                     String.valueOf(process.getPriority()),
                     String.valueOf(process.getBirthTime()),
-                    String.valueOf(process.getMaxRunTime()),
+                    //String.valueOf(process.getMaxRunTime()),
                     String.valueOf(process.getPile()),
-                    String.valueOf(process.getProgram_counter()),
+                    //String.valueOf(process.getProgram_counter()),
                     String.valueOf(process.getState())
             );
 
