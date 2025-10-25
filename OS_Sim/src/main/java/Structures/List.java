@@ -206,7 +206,11 @@ public class List<T> implements Iterable<T> {
     }
     
     public void print() {
-        
+        String array = "";
+        for (T i:this) {
+            array+="["+i+"]";
+        }
+        System.out.println(array);
     }
 
     @Override

@@ -260,17 +260,19 @@ public class ArrayList<T> implements Iterable<T> {
     }
     
     public void print() {
-        Integer pointer = getHead();
-        while (pointer != null) {
-            System.out.print(" [ " + getArray()[pointer].getElement() + " ] ");
-            pointer = getArray()[pointer].getNext();
+        String array = "";
+        for (T i:this) {
+            array+="["+i+"]";
         }
+        System.out.println(array);
     }
     
     public void printInMemory() {
+        String array = "";
         for (int i = 0; i < getArray().length; i++) {
-            System.out.print(" [ " + getArray()[i].getElement() + " ] ");
+            array+="["+getArray()[i].getElement()+"]";
         }
+        System.out.println(array);
         
     }
     

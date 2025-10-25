@@ -33,6 +33,10 @@ public class HashMap<K, V> implements Iterable<HashNode<K, V>> {
         return size;
     }
     
+    public boolean isEmpty() {
+        return getSize()==0;
+    }
+    
     private int getBucketIndex(K key) {
         return Math.abs(key.hashCode())%capacity;
     }
@@ -94,6 +98,36 @@ public class HashMap<K, V> implements Iterable<HashNode<K, V>> {
         }
         System.out.println("An Entry with this Key does not exist");
         return null;
+    }
+    
+    public List<K> getKeys() {
+        List<K> keys = new List();
+        for (List<HashNode<K, V>> b:getBuckets()) {
+            for (HashNode<K, V> node:b) {
+                keys.insertFinal(node.getKey());
+            }
+        }
+        return keys;
+    }
+    
+    public List<V> getValues() {
+        List<V> keys = new List();
+        for (List<HashNode<K, V>> b:getBuckets()) {
+            for (HashNode<K, V> node:b) {
+                keys.insertFinal(node.getValue());
+            }
+        }
+        return keys;
+    }
+    
+    public List<HashNode<K, V>> getPairs() {
+        List<HashNode<K, V>> hash = new List();
+        for (List<HashNode<K, V>> b:getBuckets()) {
+            for (HashNode<K, V> node:b) {
+                hash.insertFinal(node);
+            }
+        }
+        return hash;
     }
     
     @Override
