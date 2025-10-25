@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.concurrent.Semaphore;
 import java.util.logging.Level;
 import main.GUI;
+import main.Inicio;
 import java.util.logging.Logger; 
 
 /**
@@ -16,8 +17,6 @@ import java.util.logging.Logger;
  */
 public class OperatingSystem {
     
-    // El logger original se puede mantener para logs internos si se desea,
-    // pero los logs para el usuario ahora irán a la GUI.
     private static final Logger logger = Logger.getLogger(OperatingSystem.class.getName());
     
     private volatile long cycleDuration;
@@ -110,6 +109,7 @@ public class OperatingSystem {
     }
     
     // Campo para mantener una referencia al hilo
+    private cvs_manager_configuracion configManager;
     private Thread counterThread;
     
     public OperatingSystem() {
@@ -126,10 +126,48 @@ public class OperatingSystem {
         this.readySem = new Semaphore(1);
         this.blockedSem = new Semaphore(1);
         this.newSem = new Semaphore(1);
+        this.ventana.setOperatingSystem(this); 
+        this.configManager = new cvs_manager_configuracion();
         this.memorySpace = this.memoryFree = 1000000;
-        this.ventana.setOperatingSystem(this);
     }
+
+    public void boot() {
+        Inicio inicioDialog = new Inicio(null, true);
+        inicioDialog.setLocationRelativeTo(null);
+        inicioDialog.setVisible(true); 
+
+        if (inicioDialog.isStarted()) {
+            setMemorySpace(inicioDialog.getMemorySpace());
+            setCycleDuration(inicioDialog.getCycleDuration(), inicioDialog.getUnit());
+            
+
+            String initialScheduleStr = inicioDialog.getSchedule(); 
+            Schedule initialScheduleEnum; 
+            
+
+            if ("Priority".equalsIgnoreCase(initialScheduleStr)) {
+                initialScheduleEnum = Schedule.PRIORITY;
+            } else if ("Round Robin".equalsIgnoreCase(initialScheduleStr)) {
+                initialScheduleEnum = Schedule.ROUND_ROBIN;
+            } else if ("SRT".equalsIgnoreCase(initialScheduleStr)) {
+                initialScheduleEnum = Schedule.SHORTEST_REMAINING_TIME;
+            } else if ("Feedback".equalsIgnoreCase(initialScheduleStr)) {
+                initialScheduleEnum = Schedule.FEEDBACK;
+            } else {
+                initialScheduleEnum = Schedule.PRIORITY; 
+            }
+            this.setScheduleType(initialScheduleEnum); 
     
+            
+            this.ventana = new GUI();
+            this.ventana.setOperatingSystem(this); 
+            this.startSystem();
+            
+        } else {
+            System.exit(0);
+        }
+    }
+
     public long getCounter() {
         return cycleCounter;
     }
@@ -145,15 +183,13 @@ public class OperatingSystem {
             newDurationInMs = value;
             newIsCycleInSeconds = false;
         }
-        
         if (newDurationInMs < 1) {
             newDurationInMs = 1;
-            // Modificado: Enviar a la GUI
-            ventana.addLogMessage("ADVERTENCIA: La duración solicitada era < 1ms. Se ha establecido a 1ms.");
+            if (ventana != null && ventana.isVisible()) {
+                ventana.addLogMessage("ADVERTENCIA: La duración solicitada era < 1ms. Se ha establecido a 1ms.");
+            }
         }
-        
-        if (newDurationInMs == this.cycleDuration) {
-            // Modificado: Enviar a la GUI
+        if (newDurationInMs == this.cycleDuration && ventana != null && ventana.isVisible()) {
             ventana.addLogMessage("---> Intento de aplicar la misma duración. No se interrumpe el ciclo.");
             return;
         }
@@ -161,8 +197,9 @@ public class OperatingSystem {
         this.cycleDuration = newDurationInMs;
         this.isCycleInSeconds = newIsCycleInSeconds;
         
-        // Modificado: Enviar a la GUI
-        ventana.addLogMessage("---> Duración del ciclo establecida a: " + value + " " + unit + " (" + this.cycleDuration + "ms)");
+        if (ventana != null && ventana.isVisible()) {
+            ventana.addLogMessage("---> Duración del ciclo establecida a: " + value + " " + unit + " (" + this.cycleDuration + "ms)");
+        }
         
         if (this.counterThread != null && this.counterThread.isAlive()) {
             this.counterThread.interrupt();
@@ -186,25 +223,35 @@ public class OperatingSystem {
                     }
 
                 } catch (InterruptedException e) {
-                    // Modificado: Enviar a la GUI
                     ventana.addLogMessage("---> Ciclo interrumpido para aplicar nueva duración.");
                 }
             }
         });
         this.counterThread.setDaemon(true); 
         this.counterThread.start();
-        
-        this.readySem = new Semaphore(1);
-        
         ventana.setVisible(true);
-        ventana.setLocationRelativeTo(null);
+        // ventana.setLocationRelativeTo(null); // Quitado para que setExtendedState funcione
+        ventana.addLogMessage("Sistema iniciado. Espacio de memoria total: " + this.memorySpace + " KB.");
+        ventana.addLogMessage("Algoritmo de planificación: " + this.schedule);
+        
+        long initialValue;
+        String initialUnit;
+        if (this.isCycleInSeconds) {
+            initialValue = this.cycleDuration / 1000;
+            initialUnit = "Segundos";
+        } else {
+            initialValue = this.cycleDuration;
+            initialUnit = "Milisegundos";
+        }
+        ventana.setInitialDuration(initialValue, initialUnit);
+        ventana.setInitialSchedule(this.schedule.toString());
     }
 
     public long getMemorySpace() {
         return memorySpace;
     }
 
-    private void setMemorySpace(long memorySpace) {
+    public void setMemorySpace(long memorySpace) {
         this.memorySpace = memorySpace;
     }
     
@@ -232,7 +279,55 @@ public class OperatingSystem {
     public Schedule getScheduleType() {
         return this.schedule;
     }
+
+    public void saveCurrentConfiguration(String configName) {
+        long durationValue;
+        String unit;
+
+        if (this.isCycleInSeconds) {
+            durationValue = this.cycleDuration / 1000;
+            unit = "Segundos";
+        } else {
+            durationValue = this.cycleDuration;
+            unit = "Milisegundos";
+        }
+        String fileName = configName.endsWith(".csv") ? configName : configName + ".csv";
+
+        configManager.guardarConfiguracion(fileName, getScheduleType().toString(), getMemorySpace(), durationValue, unit);
+    }
     
+    public void createNewProcess(String name, long maxRunTime, long pile, int priority) {
+
+            long birthTime = getCounter();
+
+            // --- REQUERIMIENTO 2: Cambiar nombre ---
+            // El nombre ahora incluye el tiempo de creación (ciclo)
+            String finalName = name + " (T" + birthTime + ")";
+
+            // --- REQUERIMIENTO 1: ID no negativo ---
+            int id = (finalName + birthTime).hashCode(); // Usar finalName para el hash
+            id = Math.abs(id); // Asegurar que el ID sea positivo
+
+            // --- CORRECCIÓN 4 (previa) ---
+            // Se agregó el argumento pileIO (como 0) para coincidir con el constructor de 7 argumentos
+            OS_Process newProcess = new OS_Process(finalName, id, priority, birthTime, maxRunTime, pile, 0); // Usar finalName
+
+            this.newProcesses.insertFinal(newProcess); 
+
+            if (ventana != null) {
+                // --- CORRECCIÓN DE ESTA SOLICITUD ---
+                // Se cambió "Mem: ... KB" por "Pila: ... inst." para reflejar que 'pile' son instrucciones.
+                ventana.addLogMessage("PROCESO CREADO: " + newProcess.getName() + 
+                                      " [ID: " + newProcess.getId() + 
+                                      ", Prio: " + newProcess.getPriority() + 
+                                      ", T.Max: " + newProcess.getMaxRunTime() + "ms" +
+                                      ", Pila: " + newProcess.getPile() + " inst.]" +
+                                      " en Ciclo " + newProcess.getBirthTime());
+
+                ventana.addNewProcessToView(newProcess);
+            }
+        }
+
     private void runPreemptive() {
         OS_Process top = this.readyProcesses.peekRoot();
         while (programCounter!=0 && this.readyProcesses.peekRoot()!=top) {}

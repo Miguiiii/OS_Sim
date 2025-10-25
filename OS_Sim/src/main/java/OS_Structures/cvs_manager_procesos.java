@@ -15,12 +15,12 @@ import java.io.PrintWriter;
  * @author vince
  */
 
-public class cvs_manager {
+public class cvs_manager_procesos {
 
     private final String filePath;
     private static final String CSV_HEADER = "ID,Name,Priority,BirthTime,MaxRunTime,Pile,ProgramCounter,State";
 
-    public cvs_manager(String fileName) {
+    public cvs_manager_procesos(String fileName) {
         this.filePath = fileName;
     }
     
@@ -40,7 +40,7 @@ public class cvs_manager {
                     String.valueOf(process.getBirthTime()),
                     String.valueOf(process.getMaxRunTime()),
                     String.valueOf(process.getPile()),
-                    String.valueOf(process.getPC()),
+                    String.valueOf(process.getProgram_counter()),
                     String.valueOf(process.getState())
             );
 
@@ -66,8 +66,8 @@ public class cvs_manager {
                     long birthTime = Long.parseLong(data[3]);
                     long maxRunTime = Long.parseLong(data[4]);
                     long pile = Long.parseLong(data[5]);
-                    OS_Process foundProcess = new OS_Process(name, currentId, birthTime, maxRunTime, pile, priority);
-                    return foundProcess;
+                    //OS_Process foundProcess = new OS_Process(name, currentId, birthTime, maxRunTime, pile, priority);
+                   // return foundProcess;
                 }
             }
         } catch (IOException e) {

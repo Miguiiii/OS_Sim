@@ -11,8 +11,7 @@ import OS_Structures.OperatingSystem;
 public class main {
 
     public static void main(String[] args) {
-        OperatingSystem os = new OperatingSystem(); //ayuda el comit no comitea aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        os.startSystem();
+        OperatingSystem os = new OperatingSystem(); 
+        os.boot(); 
     }
 }
-
