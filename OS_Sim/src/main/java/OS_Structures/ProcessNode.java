@@ -8,35 +8,34 @@ import Structures.*;
  *
  * @author Miguel
  */
-public class ProcessNode implements HeapNode<OS_Process>{
+public class ProcessNode{
 
     private OS_Process element;
     public static Schedule schedule = Schedule.PRIORITY;
+    private long cycleQueued;
     
     //private long cicleCounter=561132421; //PLACEHOLDER FOR THE GLOBAL CICLECOUNTER FOR TESTS PURPOSES
     
     public ProcessNode(OS_Process element) {
         this.element = element;
+        this.cycleQueued = OperatingSystem.cycleCounter;
     }
 
-    @Override
     public OS_Process getElement() {
         return element;
     }
 
-    @Override
     public long getPriority() {
         return getPriority(getPriorityType());
     }
     
     public long getPriority(Schedule schedule) {
         return switch (schedule) {
-            case Schedule.FIFO -> getElement().getTimeInSystem(OperatingSystem.cycleCounter);
-            case Schedule.SHORTEST_NEXT -> getElement().getMaxRunTime();
-            case Schedule.SHORTEST_REMAINING_TIME -> getElement().getMaxRunTime()-getElement().getProgram_counter();
-            case Schedule.HIGHEST_RESPONSE_RATIO -> (getElement().getTimeInSystem(OperatingSystem.cycleCounter)/getElement().getMaxRunTime())-1;
-            case Schedule.FEEDBACK -> getElement().getProgram_counter()/getElement().getMaxRunTime();
-            case Schedule.ROUND_ROBIN -> 0;
+            case Schedule.FIFO, Schedule.ROUND_ROBIN -> OperatingSystem.cycleCounter - this.cycleQueued;
+            case Schedule.SHORTEST_NEXT -> getElement().getPile();
+            case Schedule.SHORTEST_REMAINING_TIME -> getElement().getPile()-getElement().getMAR();
+            case Schedule.HIGHEST_RESPONSE_RATIO -> ((OperatingSystem.cycleCounter - this.cycleQueued)/getElement().getPile())+1;
+            case Schedule.FEEDBACK -> getElement().getTimesPreempted();
             case Schedule.PRIORITY -> getElement().getPriority();
             default -> getElement().getPriority();
         };
