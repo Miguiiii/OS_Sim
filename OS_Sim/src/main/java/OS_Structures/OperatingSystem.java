@@ -158,7 +158,16 @@ public class OperatingSystem {
             }
             this.setScheduleType(initialScheduleEnum); 
     
-            
+            Thread mainThread = new Thread(() -> {
+                try {
+                    while (true) {
+                        manageSchedule();
+                    }
+                } catch (InterruptedException ex) {
+                    System.getLogger(OperatingSystem.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+                }
+                
+            });
             this.ventana = new GUI();
             this.ventana.setOperatingSystem(this); 
             this.startSystem();
