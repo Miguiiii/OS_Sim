@@ -40,7 +40,7 @@ public class cvs_manager {
                     String.valueOf(process.getBirthTime()),
                     String.valueOf(process.getMaxRunTime()),
                     String.valueOf(process.getPile()),
-                    String.valueOf(process.getProgram_counter()),
+                    String.valueOf(process.getPC()),
                     String.valueOf(process.getState())
             );
 
