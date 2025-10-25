@@ -9,11 +9,46 @@ package OS_Structures;
  * @author ile2
  */
 public enum Schedule {
-    PRIORITY,
-    FIFO,
-    ROUND_ROBIN,
-    SHORTEST_NEXT,
-    SHORTEST_REMAINING_TIME,
-    HIGHEST_RESPONSE_RATIO,
-    FEEDBACK;
+    PRIORITY{
+        @Override
+        public String toString() {
+            return "Priority";
+        }
+    },
+    FIFO{
+        @Override
+        public String toString() {
+            return "First In First Out";
+        }
+    },
+    ROUND_ROBIN{
+        @Override
+        public String toString() {
+            return "Round Robin";
+        }
+    },
+    SHORTEST_NEXT{
+        @Override
+        public String toString() {
+            return "Shortest Process Next";
+        }
+    },
+    SHORTEST_REMAINING_TIME{
+        @Override
+        public String toString() {
+            return "Shortest Remaining Time Next";
+        }
+    },
+    HIGHEST_RESPONSE_RATIO{
+        @Override
+        public String toString() {
+            return "Highest Response Ratio";
+        }
+    },
+    FEEDBACK{
+        @Override
+        public String toString() {
+            return "Feedback";
+        }
+    };
 }
