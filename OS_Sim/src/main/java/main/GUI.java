@@ -262,12 +262,22 @@ public class GUI extends javax.swing.JFrame {
         newProcessLabel = new javax.swing.JLabel();
         newProcessScrollPane = new javax.swing.JScrollPane();
         newProcessListPanel = new javax.swing.JPanel();
+        jPanel4 = new javax.swing.JPanel();
+        readyScrollPane2 = new javax.swing.JScrollPane();
+        CPUPanel = new javax.swing.JPanel();
+        mainMemoryLabel1 = new javax.swing.JLabel();
         graphicsPanel = new javax.swing.JPanel();
         logPanel = new javax.swing.JPanel();
         logScrollPane = new javax.swing.JScrollPane();
         logTextArea = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+
+        jTabbedPane1.addHierarchyListener(new java.awt.event.HierarchyListener() {
+            public void hierarchyChanged(java.awt.event.HierarchyEvent evt) {
+                jTabbedPane1HierarchyChanged(evt);
+            }
+        });
 
         simulatorPanel.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
@@ -464,7 +474,7 @@ public class GUI extends javax.swing.JFrame {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        simulatorPanel.add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(10, 600, 410, 120));
+        simulatorPanel.add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 600, 410, 120));
 
         jPanel3.setBackground(new java.awt.Color(225, 225, 225));
         jPanel3.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -518,7 +528,7 @@ public class GUI extends javax.swing.JFrame {
                 .addContainerGap())
         );
 
-        simulatorPanel.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(450, 600, -1, 120));
+        simulatorPanel.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(460, 600, -1, 120));
 
         finishedLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         finishedLabel.setText("Procesos Terminados");
@@ -704,17 +714,56 @@ public class GUI extends javax.swing.JFrame {
 
         simulatorPanel.add(secondaryMemoryPanel, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 30, -1, -1));
 
+        jPanel4.setBackground(new java.awt.Color(204, 204, 204));
+
+        readyScrollPane2.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        readyScrollPane2.setVerticalScrollBarPolicy(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+
+        CPUPanel.setBackground(new java.awt.Color(240, 240, 240));
+        CPUPanel.setLayout(new javax.swing.BoxLayout(CPUPanel, javax.swing.BoxLayout.Y_AXIS));
+
+        readyListPanel.setLayout(new BoxLayout(readyListPanel, BoxLayout.Y_AXIS));
+
+        readyScrollPane2.setViewportView(CPUPanel);
+
+        mainMemoryLabel1.setBackground(new java.awt.Color(0, 0, 0));
+        mainMemoryLabel1.setFont(new java.awt.Font("Segoe UI", 1, 17)); // NOI18N
+        mainMemoryLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        mainMemoryLabel1.setText("CPU");
+
+        javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
+        jPanel4.setLayout(jPanel4Layout);
+        jPanel4Layout.setHorizontalGroup(
+            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(readyScrollPane2)
+            .addGroup(jPanel4Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(mainMemoryLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, 178, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+        jPanel4Layout.setVerticalGroup(
+            jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel4Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(mainMemoryLabel1)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(readyScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 176, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(14, 14, 14))
+        );
+
+        simulatorPanel.add(jPanel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(70, 280, 190, 220));
+
         jTabbedPane1.addTab("Simulador", simulatorPanel);
 
         javax.swing.GroupLayout graphicsPanelLayout = new javax.swing.GroupLayout(graphicsPanel);
         graphicsPanel.setLayout(graphicsPanelLayout);
         graphicsPanelLayout.setHorizontalGroup(
             graphicsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 1634, Short.MAX_VALUE)
+            .addGap(0, 1527, Short.MAX_VALUE)
         );
         graphicsPanelLayout.setVerticalGroup(
             graphicsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 726, Short.MAX_VALUE)
+            .addGap(0, 769, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Graficos", graphicsPanel);
@@ -737,7 +786,7 @@ public class GUI extends javax.swing.JFrame {
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jTabbedPane1)
+            .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 1527, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -870,6 +919,10 @@ public class GUI extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_unitComboBoxActionPerformed
 
+    private void jTabbedPane1HierarchyChanged(java.awt.event.HierarchyEvent evt) {//GEN-FIRST:event_jTabbedPane1HierarchyChanged
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jTabbedPane1HierarchyChanged
+
     /**
      * @param args the command line arguments
      */
@@ -903,6 +956,7 @@ public class GUI extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JPanel CPUPanel;
     private javax.swing.JLabel blockedLabel;
     private javax.swing.JPanel blockedListPanel;
     private javax.swing.JScrollPane blockedScrollPane;
@@ -928,11 +982,13 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
+    private javax.swing.JPanel jPanel4;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JPanel logPanel;
     private javax.swing.JScrollPane logScrollPane;
     private javax.swing.JTextArea logTextArea;
     private javax.swing.JLabel mainMemoryLabel;
+    private javax.swing.JLabel mainMemoryLabel1;
     private javax.swing.JPanel mainMemoryPanel;
     private javax.swing.JTextField maxRunTimeField;
     private javax.swing.JLabel maxRunTimeLabel;
@@ -950,6 +1006,7 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JLabel readyLabel;
     private javax.swing.JPanel readyListPanel;
     private javax.swing.JScrollPane readyScrollPane;
+    private javax.swing.JScrollPane readyScrollPane2;
     private javax.swing.JLabel readySuspendedLabel;
     private javax.swing.JPanel readySuspendedListPanel;
     private javax.swing.JScrollPane readySuspendedScrollPane;
