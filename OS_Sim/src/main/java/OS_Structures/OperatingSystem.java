@@ -240,10 +240,10 @@ public class OperatingSystem {
                     ventana.updateCycleCount(cycleCounter);
                     
                     if (!this.isInKernel && programCounter > 0) {
-                        programCounter--;
-  
-                        if (runningProcess != null) {
-                            runningProcess.runInstruction();
+                        programCounter--;                    
+                        OS_Process tempProcess = runningProcess; 
+                        if (tempProcess != null) {
+                            tempProcess.runInstruction(); 
                         }
                     }
 
@@ -613,8 +613,6 @@ public class OperatingSystem {
             break; 
         }
         this.blockedSem.release();
-        
-        // 6. Refrescar la GUI
         if (ventana != null) {
             ventana.refreshAllQueues();
         }
@@ -628,7 +626,6 @@ public class OperatingSystem {
     public HashMap<Integer, OS_Process> getBlockedSuspendedProcesses() { return this.blockedSuspendedProcesses; }
     public List<OS_Process> getNewProcesses() { return this.newProcesses; }
     public List<OS_Process> getExitProcesses() { return this.exitProcesses; }
-    
     public Semaphore getReadySem() { return this.readySem; }
     public Semaphore getBlockedSem() { return this.blockedSem; }
     public Semaphore getNewSem() { return this.newSem; }

@@ -256,7 +256,6 @@ public class GUI extends javax.swing.JFrame {
                 
                 // Actualizar contadores de memoria
                 if (os != null) {
-                    memoryTotalLabel.setText(os.getMemorySpace() + " KB");
                     memoryFreeLabel.setText(os.getMemoryFree() + " KB");
                 }
 
@@ -463,8 +462,9 @@ public class GUI extends javax.swing.JFrame {
         readyScrollPane2 = new javax.swing.JScrollPane();
         runningProcessPanel = new javax.swing.JPanel();
         mainMemoryLabel1 = new javax.swing.JLabel();
-        memoryTotalLabel = new javax.swing.JLabel();
+        jPanel5 = new javax.swing.JPanel();
         memoryFreeLabel = new javax.swing.JLabel();
+        jLabel2 = new javax.swing.JLabel();
         graphicsPanel = new javax.swing.JPanel();
         logPanel = new javax.swing.JPanel();
         logScrollPane = new javax.swing.JScrollPane();
@@ -927,11 +927,35 @@ public class GUI extends javax.swing.JFrame {
 
         simulatorPanel.add(jPanel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(80, 310, 190, 220));
 
-        memoryTotalLabel.setText("0");
-        simulatorPanel.add(memoryTotalLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(680, 560, -1, -1));
+        jPanel5.setBackground(new java.awt.Color(204, 204, 204));
 
-        memoryFreeLabel.setText("jLabel2");
-        simulatorPanel.add(memoryFreeLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(670, 610, -1, -1));
+        memoryFreeLabel.setBackground(new java.awt.Color(0, 0, 0));
+        memoryFreeLabel.setText("0");
+
+        jLabel2.setText("Memoria disponible");
+
+        javax.swing.GroupLayout jPanel5Layout = new javax.swing.GroupLayout(jPanel5);
+        jPanel5.setLayout(jPanel5Layout);
+        jPanel5Layout.setHorizontalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel5Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 116, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 156, Short.MAX_VALUE)
+                .addComponent(memoryFreeLabel)
+                .addContainerGap())
+        );
+        jPanel5Layout.setVerticalGroup(
+            jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel5Layout.createSequentialGroup()
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(memoryFreeLabel))
+                .addContainerGap())
+        );
+
+        simulatorPanel.add(jPanel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(430, 520, 290, 30));
 
         jTabbedPane1.addTab("Simulador", simulatorPanel);
 
@@ -943,7 +967,7 @@ public class GUI extends javax.swing.JFrame {
         );
         graphicsPanelLayout.setVerticalGroup(
             graphicsPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 769, Short.MAX_VALUE)
+            .addGap(0, 830, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Graficos", graphicsPanel);
@@ -1036,8 +1060,8 @@ public class GUI extends javax.swing.JFrame {
             java.util.Random rand = new java.util.Random();
             for (int i = 0; i < 10; i++) {
                 String name = "Proc-" + (os.getProcessIdCounter() + i);
-                int priority = rand.nextInt(99) + 1; // Prioridad entre 1 y 99
-                long pile = rand.nextInt(1000) + 100; // Pila entre 100 y 1100 KB
+                int priority = rand.nextInt(5) + 1; 
+                long pile = rand.nextLong(os.getMemorySpace());
 
                 // --- Lógica de I/O Bound Aleatoria ---
                 long cyclesToCall = 0;
@@ -1282,10 +1306,12 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JPanel graphicsPanel;
     private javax.swing.JCheckBox ioBoundCheckBox;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JPanel jPanel4;
+    private javax.swing.JPanel jPanel5;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JPanel logPanel;
     private javax.swing.JScrollPane logScrollPane;
@@ -1294,7 +1320,6 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JLabel mainMemoryLabel1;
     private javax.swing.JPanel mainMemoryPanel;
     private javax.swing.JLabel memoryFreeLabel;
-    private javax.swing.JLabel memoryTotalLabel;
     private javax.swing.JTextField nameField;
     private javax.swing.JLabel nameLabel;
     private javax.swing.JLabel newProcessLabel;
