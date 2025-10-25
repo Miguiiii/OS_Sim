@@ -3,13 +3,14 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package Structures;
+import java.util.Iterator;
 
 /**
  *
  * @author Miguel
  * @param <T> Any Object
  */
-public abstract class Heap<T>{
+public abstract class Heap<T> implements Iterable<T> {
     
     protected ArrayList<HeapNode<T>> heap;
     protected int size;
@@ -51,12 +52,12 @@ public abstract class Heap<T>{
         return this.isMin;
     }
     
-    public HeapNode<T> getRootNode() {
+    public HeapNode<T> peekNode() {
         return getHeap().getElmenetAtIndex(0);
     }
     
-    public T getRoot() {
-        return getRootNode().getElement();
+    public T peek() {
+        return peekNode().getElement();
     }
     
     public boolean isElementInHeap(T element) {
@@ -83,24 +84,35 @@ public abstract class Heap<T>{
     }
     
     private void swap(int pIndex, int cIndex) {
-        ArrayNode prev, parent, child;
-        prev = parent = child = null;
+        ArrayNode prev, parent, child, prevCh;
+        prev = parent = child = prevCh = null;
         int count = 0;
         Integer pointer = getHeap().getHead();
         while (count != cIndex) {
             if (pIndex != 0 && count == pIndex - 1) {prev = getHeap().getArray()[pointer];}
+            if (count == cIndex-1) {prevCh = getHeap().getArray()[pointer];}
             if (count == pIndex) {parent = getHeap().getArray()[pointer];}
             pointer = getHeap().getArray()[pointer].getNext();
             count++;
         }
         child = getHeap().getArray()[pointer];
         pointer = child.getNext();
+        Integer pointer2;
         if (pIndex == 0) {
-            child.setNext(getHeap().getHead());
-            getHeap().setHead(parent.getNext());
+            if (cIndex == 1) {
+                child.setNext(getHeap().getHead());
+                getHeap().setHead(parent.getNext());
+            } else {
+                child.setNext(parent.getNext());
+                pointer2 = prevCh.getNext();
+                prevCh.setNext(getHeap().getHead());
+                getHeap().setHead(pointer2);
+            }
         } else {
-            child.setNext(prev.getNext());
-            prev.setNext(parent.getNext());
+            pointer2 = prev.getNext();
+            prev.setNext(prevCh.getNext());
+            child.setNext(parent.getNext());
+            prevCh.setNext(pointer2);
         }
         parent.setNext(pointer);
     }
@@ -229,7 +241,12 @@ public abstract class Heap<T>{
         }
         setHeap(new ArrayList(getMaxSize()));
         for (HeapNode<T> i:heapCopy) {
-            insertNode(i);
+            int current = insertNode(i);
+            if (isMinHeap()) {
+                insertedMin(current);
+                continue;
+            }
+            insertedMax(current);
         }
     }
     
@@ -279,6 +296,11 @@ public abstract class Heap<T>{
  
     public void printInMemory() {
         getHeap().printInMemory();
+    }
+    
+    @Override
+    public Iterator iterator() {
+        return new ArrayIterator(getHeap());
     }
     
 }
