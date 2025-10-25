@@ -10,6 +10,7 @@
             <id>unknown-jars-temp-repo</id>
             <name>A temporary repository created by NetBeans for libraries and jars it could not identify. Please replace the dependencies in this repository with correct ones and delete this repository.</name>
             <url>file:${project.basedir}/lib</url>
+            <snapshots><enabled>true</enabled></snapshots>
         </repository>
     </repositories>
     <dependencies>
@@ -32,9 +33,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>unknown.binary</groupId>
+            <groupId>org.netbeans.external</groupId>
             <artifactId>AbsoluteLayout</artifactId>
-            <version>SNAPSHOT</version>
+            <version>RELEASE270</version>
         </dependency>
     </dependencies>
     <properties>
