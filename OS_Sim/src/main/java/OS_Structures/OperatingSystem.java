@@ -166,11 +166,12 @@ public class OperatingSystem {
                 } catch (InterruptedException ex) {
                     System.getLogger(OperatingSystem.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
                 }
-                
             });
+            mainThread.setDaemon(true);
             this.ventana = new GUI();
             this.ventana.setOperatingSystem(this); 
             this.startSystem();
+            mainThread.start();
             
         } else {
             System.exit(0);
