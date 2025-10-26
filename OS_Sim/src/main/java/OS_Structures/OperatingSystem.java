@@ -16,8 +16,9 @@ public class OperatingSystem {
     
     private volatile long cycleDuration;
     private volatile boolean isCycleInSeconds; 
-    public static long cycleCounter = 0;
-    public volatile long programCounter = 0; 
+    public static volatile long cycleCounter = 0;
+    public volatile long programCounter = 0;
+    
     private volatile Schedule schedule = Schedule.PRIORITY;
     private volatile long quantum = 1;
     private volatile Schedule changedSched = Schedule.PRIORITY;
@@ -461,10 +462,7 @@ public class OperatingSystem {
 
     private void runProcess(OS_Process process) {
         runningProcess = process;
-        
-        if (ventana != null) {
-            ventana.updateRunningProcess(process);
-        }
+        if (ventana != null) {ventana.updateRunningProcess(process);}
         
         long runTime = process.getPile()-process.getMAR();
         if (process.isIOBound()) {
@@ -587,13 +585,11 @@ public class OperatingSystem {
         
         this.readySem.acquire(); 
         this.newSem.acquire();
-        
         for (OS_Process p:this.newProcesses) {
             p.setState(Status.READY_SUSPENDED); 
             this.readySuspendedProcesses.insert(p);
         }
         this.newProcesses = new List();
-        
         this.newSem.release();
         
         while (!this.readySuspendedProcesses.isEmpty()) {
@@ -605,20 +601,32 @@ public class OperatingSystem {
             Pnode.getElement().setState(Status.READY);
             this.readyProcesses.insertNode(Pnode);
             ventana.addLogMessage("--> Proceso " + Pnode.getElement().getId() + " admitido en memoria. Memoria libre: " + memoryFree + " KB.");
-        }
-        
-        this.readySem.release();
-        
+        }        
+        // 5. Lógica de Swapping (Blocked -> Blocked-Suspended)
         this.blockedSem.acquire();
         
         List<Integer> keys = this.blockedProcesses.getKeys();
-        while (true) {
+        for (Integer k:keys) {
             if (this.readySuspendedProcesses.isEmpty() || this.blockedProcesses.isEmpty()) {
                 break;
             }
-            break; 
+            OS_Process p = this.blockedProcesses.deleteEntry(k);
+            p.setState(Status.BLOCKED_SUSPENDED);
+            this.blockedSuspendedProcesses.put(k, p);
+            memoryFree += p.getPile();
+            if (this.readySuspendedProcesses.peekRoot().getPile() <= this.memoryFree) {
+                ProcessNode Pnode = this.readySuspendedProcesses.extractRootNode();
+                memoryFree -= Pnode.getElement().getPile();
+                Pnode.getElement().setState(Status.READY);
+                this.readyProcesses.insertNode(Pnode);
+                ventana.addLogMessage("--> Proceso " + Pnode.getElement().getId() + " admitido en memoria. Memoria libre: " + memoryFree + " KB.");
+            }
         }
+
         this.blockedSem.release();
+        this.readySem.release();
+        
+        // 6. Refrescar la GUI
         if (ventana != null) {
             ventana.refreshAllQueues();
         }

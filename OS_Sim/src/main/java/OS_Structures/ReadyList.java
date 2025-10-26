@@ -76,6 +76,9 @@ public class ReadyList implements Iterable {
         return 2 * index + 2;
     }
     
+    /*
+    * Swaps any child and parent nodes
+    */
     private void swap(int pIndex, int cIndex) {
         ArrayNode prev, parent, child, prevCh;
         prev = parent = child = prevCh = null;
@@ -110,6 +113,9 @@ public class ReadyList implements Iterable {
         parent.setNext(pointer);
     }
     
+    /*
+    * Heapifys to Min or Max depending on the Heap mode
+    */
     public void Heapify(int index) {
         if (isMinHeap()) {
             minHeapify(index);
@@ -118,6 +124,9 @@ public class ReadyList implements Iterable {
         maxHeapify(index);
     }
     
+    /*
+    * Swaps a node with its childrens untill its priority is less than it's parent's
+    */
     private void maxHeapify(int index) {
         int lChild = leftChild(index);
         int rChild = rightChild(index);
@@ -136,6 +145,9 @@ public class ReadyList implements Iterable {
         }
     }
     
+    /*
+    * Swaps a node with its childrens untill its priority is greater than it's parent's
+    */
     private void minHeapify(int index) {
         int lChild = leftChild(index);
         int rChild = rightChild(index);
@@ -153,14 +165,18 @@ public class ReadyList implements Iterable {
             minHeapify(smallest);
         }
     }
-    
+    /*
+    *Moves the inserted Node up untill it's children's prioritys are greater
+    */
     protected void insertedMin(int current) {
         while (current != 0 && getHeap().getElmenetAtIndex(current).getPriority() < getHeap().getElmenetAtIndex(parent(current)).getPriority()) {
             swap(parent(current), current);
             current = parent(current);
         }
     }
-    
+    /*
+    *Moves the inserted Node up untill it's children's prioritys are lesser
+    */
     protected void insertedMax(int current) {
         while (current != 0 && getHeap().getElmenetAtIndex(current).getPriority() > getHeap().getElmenetAtIndex(parent(current)).getPriority()) {
             swap(parent(current), current);
@@ -203,7 +219,9 @@ public class ReadyList implements Iterable {
         size--;
         return root;
     }
-    
+    /*
+    * Afer removing the root, moves last node to the top and Heapifys down
+    */
     protected void fixHeap() {
         if (size != 0) {
             getHeap().insertBegin(getHeap().getElmenetAtIndex(size - 1));
