@@ -32,7 +32,7 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.xy.XYSeries;
 import org.jfree.data.xy.XYSeriesCollection;
-
+import java.awt.Component; 
 /**
  *
  * @author vince
@@ -60,6 +60,17 @@ public class GUI extends javax.swing.JFrame {
     public GUI() {
         initComponents();
         this.setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
+        
+  
+        getContentPane().setLayout(new java.awt.BorderLayout());
+        getContentPane().add(jTabbedPane1, java.awt.BorderLayout.CENTER);
+        newProcessListPanel.setLayout(new BoxLayout(newProcessListPanel, BoxLayout.Y_AXIS));
+        readyListPanel.setLayout(new BoxLayout(readyListPanel, BoxLayout.Y_AXIS));
+        blockedListPanel.setLayout(new BoxLayout(blockedListPanel, BoxLayout.Y_AXIS));
+        readySuspendedListPanel.setLayout(new BoxLayout(readySuspendedListPanel, BoxLayout.Y_AXIS));
+        blockedSuspendedListPanel.setLayout(new BoxLayout(blockedSuspendedListPanel, BoxLayout.Y_AXIS));
+        finishedListPanel.setLayout(new BoxLayout(finishedListPanel, BoxLayout.X_AXIS));
+        setupScrollPanes();
         quantumLabel.setVisible(false);
         quantumField.setVisible(false);
         ioBoundCheckBox.setSelected(false);
@@ -68,34 +79,32 @@ public class GUI extends javax.swing.JFrame {
         cyclesToCallLabel.setEnabled(false);
         cyclesToCompleteLabel.setEnabled(false);
         cyclesToCallField.setText("0");
-        cyclesToCompleteField.setText("0");
-
-        MousePanListener verticalPan1 = new MousePanListener(newProcessScrollPane);
-        newProcessListPanel.addMouseListener(verticalPan1);
-        newProcessListPanel.addMouseMotionListener(verticalPan1);
-        
-        MousePanListener verticalPan2 = new MousePanListener(readyScrollPane);
-        readyListPanel.addMouseListener(verticalPan2);
-        readyListPanel.addMouseMotionListener(verticalPan2);
-        
-        MousePanListener verticalPan3 = new MousePanListener(blockedScrollPane);
-        blockedListPanel.addMouseListener(verticalPan3);
-        blockedListPanel.addMouseMotionListener(verticalPan3);
-        
-        MousePanListener verticalPan4 = new MousePanListener(readySuspendedScrollPane);
-        readySuspendedListPanel.addMouseListener(verticalPan4);
-        readySuspendedListPanel.addMouseMotionListener(verticalPan4);
-        
-        MousePanListener verticalPan5 = new MousePanListener(blockedSuspendedScrollPane);
-        blockedSuspendedListPanel.addMouseListener(verticalPan5);
-        blockedSuspendedListPanel.addMouseMotionListener(verticalPan5);
-        
-        MousePanListener horizontalPan = new MousePanListener(finishedScrollPane);
-        finishedListPanel.addMouseListener(horizontalPan);
-        finishedListPanel.addMouseMotionListener(horizontalPan);
-        
+        cyclesToCompleteField.setText("0");  
         initializeCharts();
+    }
+    
+    private void setupScrollPanes() {
+        newProcessScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        newProcessScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER); 
+        
+        readyScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        readyScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER); 
+        
+        blockedScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        blockedScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER); 
+        
+        readySuspendedScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        readySuspendedScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER); 
+        
+        blockedSuspendedScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        blockedSuspendedScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER); 
 
+        finishedScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        finishedScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER); 
+        
+
+        
+        simulatorPanel.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
     }
     
     private void initializeCharts() {
@@ -284,6 +293,12 @@ public class GUI extends javax.swing.JFrame {
         });
     }
 
+    private JLabel createCenteredLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setHorizontalAlignment(JLabel.CENTER); 
+        label.setAlignmentX(Component.CENTER_ALIGNMENT); 
+        return label;
+    }
     private void createProcessCard(OS_Structures.OS_Process process, JPanel parentPanel) {
         JPanel processCard = new JPanel();
         processCard.setLayout(new BoxLayout(processCard, BoxLayout.Y_AXIS));
@@ -316,7 +331,8 @@ public class GUI extends javax.swing.JFrame {
 
         processCard.add(new JLabel(" ID: " + process.getId() + " - " + process.getName()));
         processCard.add(new JLabel(" Prio: " + process.getPriority() + " | Pila: " + process.getPile()));
-        processCard.add(new JLabel(" PC: " + process.getMAR() + " / " + process.getPile()));
+        processCard.add(new JLabel(" PC: " + process.getPC() + " / " + process.getPile()));
+        processCard.add(new JLabel(" MAR: " + process.getMAR() + " / " + process.getPile()));
         processCard.add(new JLabel(" Tipo: " + (process.isIOBound() ? "I/O Bound" : "CPU Bound")));
         parentPanel.add(processCard);
         parentPanel.add(Box.createRigidArea(new Dimension(0, 5)));
@@ -336,7 +352,46 @@ public class GUI extends javax.swing.JFrame {
             runningProcessPanel.repaint();
         });
     }
-    
+
+    public void refreshProcessMetrics() {
+        SwingUtilities.invokeLater(() -> {
+            if (os != null && os.getRunningProcess() != null) {
+                updateRunningProcessMetrics();
+            }
+        });
+    }
+
+    private void updateRunningProcessMetrics() {
+        if (runningProcessPanel.getComponentCount() > 0 && os != null) {
+            OS_Process runningProcess = os.getRunningProcess();
+            if (runningProcess != null) {
+                Component[] components = runningProcessPanel.getComponents();
+                for (Component comp : components) {
+                    if (comp instanceof JPanel) {
+                        JPanel card = (JPanel) comp;
+                        updateProcessCardMetrics(card, runningProcess);
+                    }
+                }
+            }
+        }
+    }
+
+
+    private void updateProcessCardMetrics(JPanel card, OS_Process process) {
+        Component[] cardComponents = card.getComponents();
+        for (Component cardComp : cardComponents) {
+            if (cardComp instanceof JLabel) {
+                JLabel label = (JLabel) cardComp;
+                String currentText = label.getText();
+
+                if (currentText.startsWith(" PC:")) {
+                    label.setText(" PC: " + process.getPC() + " / " + process.getPile());
+                } else if (currentText.startsWith(" MAR:")) {
+                    label.setText(" MAR: " + process.getMAR() + " / " + process.getPile());
+                }
+            }
+        }
+    }
     public void refreshAllQueues() {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -655,7 +710,8 @@ public class GUI extends javax.swing.JFrame {
         logTextArea = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
+        // Layout cambiado a BorderLayout para mejor adaptación
+        getContentPane().setLayout(new java.awt.BorderLayout());
 
         jTabbedPane1.addHierarchyListener(new java.awt.event.HierarchyListener() {
             public void hierarchyChanged(java.awt.event.HierarchyEvent evt) {
@@ -887,13 +943,13 @@ public class GUI extends javax.swing.JFrame {
                 .addContainerGap())
         );
 
-        simulatorPanel.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(460, 600, -1, 120));
+        simulatorPanel.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(470, 600, 300, 120));
 
         finishedLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         finishedLabel.setText("Procesos Terminados");
         simulatorPanel.add(finishedLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(820, 550, 660, 30));
 
-        finishedScrollPane.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        finishedScrollPane.setHorizontalScrollBarPolicy(javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         finishedScrollPane.setVerticalScrollBarPolicy(javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
 
         finishedListPanel.setBackground(new java.awt.Color(240, 240, 240));
@@ -1204,9 +1260,13 @@ public class GUI extends javax.swing.JFrame {
 
         jTabbedPane1.addTab("Info", logPanel);
 
-        getContentPane().add(jTabbedPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, -1, -1));
+        // Cambio principal: usar BorderLayout en lugar de AbsoluteConstraints
+        getContentPane().add(jTabbedPane1, java.awt.BorderLayout.CENTER);
 
         pack();
+        
+        // Establecer tamaño mínimo
+        setMinimumSize(new java.awt.Dimension(1024, 768));
     }// </editor-fold>                        
 
     private void createProcessButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                  
@@ -1581,62 +1641,5 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JPanel simulatorPanel;
     private javax.swing.JComboBox<String> unitComboBox;
     // End of variables declaration                   
-
-    class MousePanListener extends MouseAdapter {
-
-        private final Point dragStartPoint = new Point();
-        private final JScrollPane scrollPane;
-        private final JViewport viewport;
-        private final Cursor defaultCursor;
-        private final Cursor handCursor = new Cursor(Cursor.HAND_CURSOR);
-
-        public MousePanListener(JScrollPane scrollPane) {
-            this.scrollPane = scrollPane;
-            this.viewport = scrollPane.getViewport();
-            this.defaultCursor = scrollPane.getCursor();
-        }
-
-        @Override
-        public void mousePressed(MouseEvent e) {
-            dragStartPoint.setLocation(e.getPoint());
-            viewport.setCursor(handCursor);
-        }
-
-        @Override
-        public void mouseReleased(MouseEvent e) {
-            viewport.setCursor(defaultCursor);
-        }
-
-        @Override
-        public void mouseDragged(MouseEvent e) {
-            Point currentPoint = e.getPoint();
-            Point viewPosition = viewport.getViewPosition();
-
-            int deltaX = dragStartPoint.x - currentPoint.x;
-            int deltaY = dragStartPoint.y - currentPoint.y;
-
-            int sensitivityFactor = 2;
-            int newX = viewPosition.x + (deltaX * sensitivityFactor);
-            int newY = viewPosition.y + (deltaY * sensitivityFactor);
-
-            int maxX = viewport.getView().getWidth() - viewport.getWidth();
-            int maxY = viewport.getView().getHeight() - viewport.getHeight();
-
-            if (newX < 0) {
-                newX = 0;
-            }
-            if (newX > maxX) {
-                newX = maxX;
-            }
-            if (newY < 0) {
-                newY = 0;
-            }
-            if (newY > maxY) {
-                newY = maxY;
-            }
-
-            viewport.setViewPosition(new Point(newX, newY));
-        }
-    }
 
 }
