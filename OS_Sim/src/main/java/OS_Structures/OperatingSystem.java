@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package OS_Structures;
 import Structures.*;
 import java.util.concurrent.Semaphore;
@@ -9,7 +5,6 @@ import java.util.logging.Level;
 import main.GUI;
 import main.Inicio;
 import java.util.logging.Logger; 
-
 
 /**
  *
@@ -28,19 +23,16 @@ public class OperatingSystem {
     private volatile long quantum = 1;
     private volatile Schedule changedSched = Schedule.PRIORITY;
     private volatile long changedQuant = 1;
-    private volatile int processIdCounter = 0; 
-    
+    private volatile int processIdCounter = 0;  
     private volatile boolean isInKernel = true;
     private long memorySpace;
-    private volatile long memoryFree; 
-    
+    private volatile long memoryFree;  
     private ReadyList readyProcesses;
     private ReadyList readySuspendedProcesses;
     private HashMap<Integer, OS_Process> blockedProcesses;
     private HashMap<Integer, OS_Process> blockedSuspendedProcesses;
     private List<OS_Process> newProcesses;
     private List<OS_Process> exitProcesses;
-    
     private volatile OS_Process runningProcess;
     private GUI ventana;
     private Semaphore readySem;
@@ -152,20 +144,24 @@ public class OperatingSystem {
             
             String initialScheduleStr = inicioDialog.getSchedule(); 
             Schedule initialScheduleEnum; 
-            
-            if ("Priority".equalsIgnoreCase(initialScheduleStr)) {
-                initialScheduleEnum = Schedule.PRIORITY;
-            } else if ("Round Robin".equalsIgnoreCase(initialScheduleStr)) {
-                initialScheduleEnum = Schedule.ROUND_ROBIN;
-            } else if ("SRT".equalsIgnoreCase(initialScheduleStr)) {
-                initialScheduleEnum = Schedule.SHORTEST_REMAINING_TIME;
-            } else if ("Feedback".equalsIgnoreCase(initialScheduleStr)) {
-                initialScheduleEnum = Schedule.FEEDBACK;
-            } else {
-                initialScheduleEnum = Schedule.PRIORITY; 
+            switch (initialScheduleStr.toUpperCase()) {
+                case "PRIORITY": initialScheduleEnum = Schedule.PRIORITY; break;
+                case "FIFO":     initialScheduleEnum = Schedule.FIFO; break;
+                case "RR":       initialScheduleEnum = Schedule.ROUND_ROBIN; break;
+                case "SN":       initialScheduleEnum = Schedule.SHORTEST_NEXT; break;
+                case "SRT":      initialScheduleEnum = Schedule.SHORTEST_REMAINING_TIME; break;
+                case "HRR":      initialScheduleEnum = Schedule.HIGHEST_RESPONSE_RATIO; break;
+                case "FEEDBACK": initialScheduleEnum = Schedule.FEEDBACK; break;
+                default:         initialScheduleEnum = Schedule.PRIORITY; break;
             }
             this.setScheduleType(initialScheduleEnum); 
     
+            if (initialScheduleEnum == Schedule.ROUND_ROBIN || initialScheduleEnum == Schedule.FEEDBACK) {
+                long initialQuantum = inicioDialog.getQuantum();
+                this.quantum = initialQuantum;
+                this.changedQuant = initialQuantum;
+            }
+            
             Thread mainThread = new Thread(() -> {
                 try {
                     while (true) {
@@ -267,8 +263,23 @@ public class OperatingSystem {
             initialValue = this.cycleDuration;
             initialUnit = "Milisegundos";
         }
+        
         ventana.setInitialDuration(initialValue, initialUnit);
-        ventana.setInitialSchedule(this.schedule.toString());
+        ventana.setInitialQuantum(this.getQuantum());
+        ventana.setInitialSchedule(this.getScheduleDisplayName(this.schedule));
+    }
+
+    private String getScheduleDisplayName(Schedule schedule) {
+        switch (schedule) {
+            case ROUND_ROBIN: return "RR";
+            case SHORTEST_NEXT: return "SN";
+            case SHORTEST_REMAINING_TIME: return "SRT";
+            case HIGHEST_RESPONSE_RATIO: return "HRR";
+            case FEEDBACK: return "FeedBack";
+            case PRIORITY: return "Priority";
+            case FIFO: return "FIFO";
+            default: return schedule.toString();
+        }
     }
 
     public long getMemorySpace() {
@@ -325,8 +336,7 @@ public class OperatingSystem {
             unit = "Milisegundos";
         }
         String fileName = configName.endsWith(".csv") ? configName : configName + ".csv";
-
-        configManager.guardarConfiguracion(fileName, getScheduleType().toString(), getMemorySpace(), durationValue, unit);
+        configManager.guardarConfiguracion(fileName, getScheduleType().toString(), getMemorySpace(), durationValue, unit, getQuantum());
     }
     
     
@@ -351,6 +361,11 @@ public class OperatingSystem {
 
             this.newSem.acquire();
             this.newProcesses.insertFinal(newProcess);
+            
+            if (ventana != null) {
+                ventana.addNewProcessToView(newProcess);
+            }
+
             this.newSem.release();
 
              if (ventana != null) {
@@ -369,10 +384,6 @@ public class OperatingSystem {
     }
 
 
-    /**
-     * Espera mientras se ejecuta el proceso y permite preemption.
-     * @param currentlyRunning El proceso que está en la CPU.
-     */
     private void runPreemptive(OS_Process currentlyRunning) {
         while (programCounter > 0) {
             OS_Process bestInReady = null;
@@ -418,12 +429,7 @@ public class OperatingSystem {
                     break;
                     
                 case ROUND_ROBIN:
-
-                    preempt = false;
-                    break;
-                    
                 default:
-
                     preempt = false;
                     break;
             }
@@ -478,15 +484,18 @@ public class OperatingSystem {
         
         this.programCounter = runTime;
         isInKernel = false;
+        if (ventana != null) {
+            ventana.updateCpuStatus();
+        }
         
         boolean isPreemptive = false;
         switch (currentSchedule) { 
             case SHORTEST_REMAINING_TIME:
-            case ROUND_ROBIN:
-            case FEEDBACK:
             case PRIORITY: 
+            case FEEDBACK:
                 isPreemptive = true;
                 break;
+            case ROUND_ROBIN:
             case FIFO:
             case SHORTEST_NEXT:
             case HIGHEST_RESPONSE_RATIO:
@@ -503,6 +512,10 @@ public class OperatingSystem {
 
         isInKernel = true;
         runningProcess = null; 
+
+        if (ventana != null) {
+            ventana.updateCpuStatus();
+        }
         
         if (ventana != null) {
             ventana.updateRunningProcess(null);
@@ -549,7 +562,6 @@ public class OperatingSystem {
     
     private void manageSchedule() throws InterruptedException {
         
-        // 1. Aplicar cambios de Planificación
         if (this.schedule != this.changedSched) {
             this.schedule = this.changedSched;
             this.readyProcesses.switchSchedule(this.schedule);
@@ -563,7 +575,6 @@ public class OperatingSystem {
         }
         
         
-        // 2. Ejecutar un proceso si es posible
         if (!readyProcesses.isEmpty()) {
             this.readySem.acquire();
             OS_Process process = readyProcesses.extractRoot();
@@ -572,7 +583,6 @@ public class OperatingSystem {
             runProcess(process);
         }
         
-        // 3. Admitir nuevos procesos (New -> Ready-Suspended)
         this.readySem.acquire(); 
         this.newSem.acquire();
         for (OS_Process p:this.newProcesses) {
@@ -582,7 +592,6 @@ public class OperatingSystem {
         this.newProcesses = new List();
         this.newSem.release();
         
-        // 4. Admitir procesos en memoria (Ready-Suspended -> Ready)
         while (!this.readySuspendedProcesses.isEmpty()) {
             if (this.readySuspendedProcesses.peekRoot().getPile() > this.memoryFree) {
                 break;
@@ -623,7 +632,13 @@ public class OperatingSystem {
         }
     }
 
+    public boolean isInKernel() {
+        return this.isInKernel;
+    }
 
+    public OS_Process getRunningProcess() {
+        return this.runningProcess;
+    }
     
     public ReadyList getReadyProcesses() { return this.readyProcesses; }
     public ReadyList getReadySuspendedProcesses() { return this.readySuspendedProcesses; }

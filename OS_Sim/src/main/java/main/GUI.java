@@ -2,6 +2,7 @@ package main;
 
 import OS_Structures.OS_Process;
 import OS_Structures.OperatingSystem;
+import OS_Structures.Schedule;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import java.awt.Color;
@@ -17,6 +18,20 @@ import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.JViewport;
+import java.awt.BorderLayout;
+import javax.swing.JTabbedPane;
+import java.awt.GridLayout;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import javax.swing.JTextArea;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.data.xy.XYSeries;
+import org.jfree.data.xy.XYSeriesCollection;
 
 /**
  *
@@ -26,25 +41,32 @@ public class GUI extends javax.swing.JFrame {
 
     private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(GUI.class.getName());
     private OperatingSystem os;
+    private JTextArea metricsTextArea;
+
+    private Map<Schedule, XYSeries> throughputSeriesMap;
+    private Map<Schedule, XYSeries> cpuUtilizationSeriesMap;
+    private Map<Schedule, XYSeries> avgWaitTimeSeriesMap;
+    private Map<Schedule, XYSeries> fairnessSeriesMap;
+
+    private Map<Schedule, Long> totalBusyCyclesMap;
+    private Map<Schedule, Double> totalWaitingTimeMap;
+    private Map<Schedule, Long> totalFinishedProcsMap;
+    private Map<Schedule, List<Double>> finishedWaitTimesMap;
+    
+    private int graphedFinishedProcessCount = 0;
+    
+    private volatile OS_Process runningProcessForChart = null;
 
     public GUI() {
         initComponents();
-
-        
         this.setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
-
-
         quantumLabel.setVisible(false);
         quantumField.setVisible(false);
- 
         ioBoundCheckBox.setSelected(false);
-        
-
         cyclesToCallField.setEnabled(false);
         cyclesToCompleteField.setEnabled(false);
         cyclesToCallLabel.setEnabled(false);
         cyclesToCompleteLabel.setEnabled(false);
-  
         cyclesToCallField.setText("0");
         cyclesToCompleteField.setText("0");
 
@@ -71,24 +93,158 @@ public class GUI extends javax.swing.JFrame {
         MousePanListener horizontalPan = new MousePanListener(finishedScrollPane);
         finishedListPanel.addMouseListener(horizontalPan);
         finishedListPanel.addMouseMotionListener(horizontalPan);
+        
+        initializeCharts();
 
     }
+    
+    private void initializeCharts() {
+        graphicsPanel.setLayout(new java.awt.BorderLayout());
+        JTabbedPane scheduleTabbedPane = new JTabbedPane();
+        graphicsPanel.add(scheduleTabbedPane, java.awt.BorderLayout.CENTER);
+
+        throughputSeriesMap = new HashMap<>();
+        cpuUtilizationSeriesMap = new HashMap<>();
+        avgWaitTimeSeriesMap = new HashMap<>();
+        fairnessSeriesMap = new HashMap<>();
+        finishedWaitTimesMap = new HashMap<>();
+
+        totalBusyCyclesMap = new HashMap<>();
+        totalWaitingTimeMap = new HashMap<>();
+        totalFinishedProcsMap = new HashMap<>();
+
+        for (Schedule alg : Schedule.values()) {
+            
+            totalBusyCyclesMap.put(alg, 0L);
+            totalWaitingTimeMap.put(alg, 0.0);
+            totalFinishedProcsMap.put(alg, 0L);
+            finishedWaitTimesMap.put(alg, new ArrayList<>());
+
+            JPanel algTabPanel = new JPanel(new GridLayout(2, 2, 5, 5));
+            
+            XYSeries tputSeries = new XYSeries("Throughput");
+            throughputSeriesMap.put(alg, tputSeries);
+            XYSeriesCollection tputDataset = new XYSeriesCollection(tputSeries);
+            JFreeChart tputChart = ChartFactory.createXYLineChart(
+                    "Throughput (Procesos Terminados)", "Ciclo del OS", "Total Terminados",
+                    tputDataset, PlotOrientation.VERTICAL, true, true, false);
+            algTabPanel.add(new ChartPanel(tputChart));
+
+            XYSeries cpuSeries = new XYSeries("Utilización CPU");
+            cpuUtilizationSeriesMap.put(alg, cpuSeries);
+            XYSeriesCollection cpuDataset = new XYSeriesCollection(cpuSeries);
+            JFreeChart cpuChart = ChartFactory.createXYLineChart(
+                    "Utilización de CPU (%)", "Ciclo del OS", "% Utilización",
+                    cpuDataset, PlotOrientation.VERTICAL, true, true, false);
+            algTabPanel.add(new ChartPanel(cpuChart));
+
+            XYSeries waitSeries = new XYSeries("T. Espera Prom.");
+            avgWaitTimeSeriesMap.put(alg, waitSeries);
+            XYSeriesCollection waitDataset = new XYSeriesCollection(waitSeries);
+            JFreeChart waitChart = ChartFactory.createXYLineChart(
+                    "Tiempo de Espera Promedio", "Nro. Proceso Terminado", "Promedio (ms)",
+                    waitDataset, PlotOrientation.VERTICAL, true, true, false);
+            algTabPanel.add(new ChartPanel(waitChart));
+
+            XYSeries fairnessSeries = new XYSeries("Equidad (Desv. Est.)");
+            fairnessSeriesMap.put(alg, fairnessSeries);
+            XYSeriesCollection fairnessDataset = new XYSeriesCollection(fairnessSeries);
+            JFreeChart fairnessChart = ChartFactory.createXYLineChart(
+                    "Equidad (Desv. Est. T. Espera)", "Nro. Proceso Terminado", "Desv. Estándar (ms)",
+                    fairnessDataset, PlotOrientation.VERTICAL, true, true, false);
+            algTabPanel.add(new ChartPanel(fairnessChart));
+
+
+            scheduleTabbedPane.addTab(alg.name(), algTabPanel);
+        }
+    }
+    
+    private void limitSeriesData(XYSeries series, int maxPoints) {
+        if (series != null && series.getItemCount() > maxPoints) {
+            series.remove(0);
+        }
+    }
+
+    public void updateChartData(long cycleCount) {
+        if (os == null) return;
+        
+        final Schedule alg = os.getScheduleType();
+        
+        if (alg == null) return;
+
+        boolean cpuBusy = (this.runningProcessForChart != null);
+        long busyCycles = 0;
+        
+        if (cpuBusy) {
+            busyCycles = totalBusyCyclesMap.compute(alg, (k, v) -> (v == null ? 0 : v) + 1);
+        } else {
+            busyCycles = totalBusyCyclesMap.getOrDefault(alg, 0L);
+        }
+        
+        final double utilization = (cycleCount == 0) ? 0 : ((double)busyCycles / cycleCount) * 100.0;
+        
+        SwingUtilities.invokeLater(() -> {
+            try {
+                XYSeries cpuSeries = cpuUtilizationSeriesMap.get(alg);
+
+                if (cpuSeries != null) {
+                    cpuSeries.add(cycleCount, utilization);
+                    limitSeriesData(cpuSeries, 500);
+                }
+
+            } catch (Exception e) {
+                logger.log(java.util.logging.Level.WARNING, "Error al actualizar datos de gráficos", e);
+            }
+        });
+    }
+
     public void setOperatingSystem(OperatingSystem os) {
         this.os = os;
     }
 
     public void updateCycleCount(long count) {
+        updateChartData(count);
+        
         SwingUtilities.invokeLater(() -> {
             cycleLabel.setText("Ciclos hasta el momento: " + count);
         });
     }
+    
+    public void updateCpuStatus() {
+        if (os == null || cpuStatusLabel == null) {
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            try {
+                boolean kernelMode = os.isInKernel();
+                
+                if (kernelMode) {
+                    cpuStatusLabel.setText("KERNEL MODE");
+
+                } else {
+                    OS_Process p = os.getRunningProcess();
+                    String pid = (p != null) ? " (PID: " + p.getId() + ")" : "";
+                    cpuStatusLabel.setText("USER MODE" + pid);
+  
+        
+                }
+            } catch (Exception e) {
+                logger.log(java.util.logging.Level.WARNING, "Error al actualizar estado de CPU", e);
+            }
+        });
+    }
 
     public void addLogMessage(String message) {
+        long currentCycle = OperatingSystem.cycleCounter;
+        String formattedMessage = "[Ciclo " + currentCycle + "] " + message + "\n";
+        
         SwingUtilities.invokeLater(() -> {
-            logTextArea.append(message + "\n");
+            logTextArea.append(formattedMessage);
             logTextArea.setCaretPosition(logTextArea.getDocument().getLength());
         });
     }
+
 
     public void setInitialDuration(long duration, String unit) {
         SwingUtilities.invokeLater(() -> {
@@ -99,14 +255,24 @@ public class GUI extends javax.swing.JFrame {
             currentDurationValueLabel.setText(durationInMs + " ms");
         });
     }
+    
+
+    public void setInitialQuantum(long quantum) {
+        SwingUtilities.invokeLater(() -> {
+            quantumField.setText(String.valueOf(quantum));
+        });
+    }
 
     public void setInitialSchedule(String schedule) {
         SwingUtilities.invokeLater(() -> {
             scheduleComboBox.setSelectedItem(schedule);
-
-            currentScheduleValueLabel.setText(schedule);
-
-            scheduleComboBoxActionPerformed(null);
+            scheduleComboBoxActionPerformed(null); 
+            
+            String labelText = schedule;
+            if ("RR".equalsIgnoreCase(schedule) || "FeedBack".equalsIgnoreCase(schedule)) {
+                labelText += " (Q=" + quantumField.getText() + ")";
+            }
+            currentScheduleValueLabel.setText(labelText); 
         });
     }
 
@@ -118,82 +284,51 @@ public class GUI extends javax.swing.JFrame {
         });
     }
 
-    /**
-     * Crea un panel visual (una "tarjeta") para un proceso y lo añade a un panel padre.
-     * @param process El proceso a mostrar.
-     * @param parentPanel El panel (ej. readyListPanel) donde se añadirá la tarjeta.
-     */
     private void createProcessCard(OS_Structures.OS_Process process, JPanel parentPanel) {
-        
         JPanel processCard = new JPanel();
-        // Usar BoxLayout para apilar las etiquetas verticalmente
         processCard.setLayout(new BoxLayout(processCard, BoxLayout.Y_AXIS));
         processCard.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(Color.BLACK, 1), // Borde exterior
-            BorderFactory.createEmptyBorder(5, 5, 5, 5)     // Relleno interior
+            BorderFactory.createLineBorder(Color.BLACK, 1),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)
         ));
         
-        // Asignar color según el estado
-        switch (process.getState()) {
-            case RUNNING:
-                processCard.setBackground(new Color(173, 216, 230)); // Azul claro
-                break;
-            case BLOCKED:
-                processCard.setBackground(new Color(255, 182, 193)); // Rosa claro
-                break;
-            case READY:
-                processCard.setBackground(new Color(144, 238, 144)); // Verde claro
-                break;
-            default:
-                processCard.setBackground(Color.WHITE);
-                break;
+        if (process == null) return;
+        
+        OS_Structures.Status status = process.getState();
+        if (status != null) {
+            switch (status) {
+                case RUNNING:
+                    processCard.setBackground(new Color(173, 216, 230));
+                    break;
+                case BLOCKED:
+                    processCard.setBackground(new Color(255, 182, 193));
+                    break;
+                case READY:
+                    processCard.setBackground(new Color(144, 238, 144));
+                    break;
+                default:
+                    processCard.setBackground(Color.WHITE);
+                    break;
+            }
+        } else {
+             processCard.setBackground(Color.GRAY);
         }
 
-        // Añadir la información del proceso
         processCard.add(new JLabel(" ID: " + process.getId() + " - " + process.getName()));
         processCard.add(new JLabel(" Prio: " + process.getPriority() + " | Pila: " + process.getPile()));
         processCard.add(new JLabel(" PC: " + process.getMAR() + " / " + process.getPile()));
         processCard.add(new JLabel(" Tipo: " + (process.isIOBound() ? "I/O Bound" : "CPU Bound")));
-        
-        // Añadir un espacio en blanco entre tarjetas
         parentPanel.add(processCard);
-        parentPanel.add(Box.createRigidArea(new Dimension(0, 5))); // Espaciador vertical
-    }
-    
-
-    public void updateReadyList(Iterable<OS_Process> processes) {
-        SwingUtilities.invokeLater(() -> {
-            readyListPanel.removeAll();
-            if (processes != null) {
-                for (OS_Process process : processes) {
-                    createProcessCard(process, readyListPanel);
-                }
-            }
-            readyListPanel.revalidate();
-            readyListPanel.repaint();
-        });
-    }
-
-    public void updateBlockedList(Iterable<OS_Process> processes) {
-        SwingUtilities.invokeLater(() -> {
-            blockedListPanel.removeAll();
-            if (processes != null) {
-                for (OS_Process process : processes) {
-                    createProcessCard(process, blockedListPanel);
-                }
-            }
-            blockedListPanel.revalidate();
-            blockedListPanel.repaint();
-        });
+        parentPanel.add(Box.createRigidArea(new Dimension(0, 5)));
     }
     
     public void updateRunningProcess(OS_Structures.OS_Process process) {
-        // Ejecutar en el hilo de la GUI
+        this.runningProcessForChart = process;
+        
         SwingUtilities.invokeLater(() -> {
-            runningProcessPanel.removeAll(); // Limpiar el panel "Running"
+            runningProcessPanel.removeAll();
 
             if (process != null) {
-                // Si un proceso está corriendo, crear su tarjeta
                 createProcessCard(process, runningProcessPanel);
             }
 
@@ -201,105 +336,92 @@ public class GUI extends javax.swing.JFrame {
             runningProcessPanel.repaint();
         });
     }
-
-    public void updateReadySuspendedList(Iterable<OS_Process> processes) {
-        SwingUtilities.invokeLater(() -> {
-            readySuspendedListPanel.removeAll();
-            if (processes != null) {
-                for (OS_Process process : processes) {
-                    createProcessCard(process, readySuspendedListPanel);
-                }
-            }
-            readySuspendedListPanel.revalidate();
-            readySuspendedListPanel.repaint();
-        });
-    }
-
-    public void updateBlockedSuspendedList(Iterable<OS_Process> processes) {
-        SwingUtilities.invokeLater(() -> {
-            blockedSuspendedListPanel.removeAll();
-            if (processes != null) {
-                for (OS_Process process : processes) {
-                    createProcessCard(process, blockedSuspendedListPanel);
-                }
-            }
-            blockedSuspendedListPanel.revalidate();
-            blockedSuspendedListPanel.repaint();
-        });
-    }
-
-    public void addFinishedProcessToView(OS_Process process) {
-        SwingUtilities.invokeLater(() -> {
-            createProcessCard(process, finishedListPanel);
-            finishedListPanel.add(Box.createRigidArea(new Dimension(10, 0)));
-            finishedListPanel.revalidate();
-            finishedListPanel.repaint();
-        });
-    }
     
-    /**
-     * Orquesta la actualización de todas las colas de procesos en la GUI.
-     * Este método es seguro para ser llamado desde cualquier hilo (ej. el hilo del OS).
-     */
     public void refreshAllQueues() {
-        // Todas las actualizaciones de Swing DEBEN ocurrir en el Event Dispatch Thread (EDT).
-        // invokeLater pone este trabajo en la cola del EDT.
         SwingUtilities.invokeLater(() -> {
             try {
-                // Actualizamos cada panel
                 refreshNewList();
                 refreshReadyList();
                 refreshReadySuspendedList();
                 refreshBlockedList();
                 refreshBlockedSuspendedList();
                 refreshFinishedList();
+                updateMetricsDisplay();
                 
-                // Actualizar contadores de memoria
                 if (os != null) {
                     memoryFreeLabel.setText(os.getMemoryFree() + " KB");
                 }
 
             } catch (Exception e) {
-                // Captura cualquier error durante el redibujado
                 logger.log(java.util.logging.Level.SEVERE, "Error al refrescar las colas de la GUI", e);
             }
         });
     }
     
-    // --- MÉTODOS AUXILIARES DE REFRESCO DE PANELES ---
+    private void updateMetricsDisplay() {
+        if (os == null || metricsTextArea == null) return;
+
+        Schedule alg = os.getScheduleType();
+        long cycleCount = OperatingSystem.cycleCounter;
+        long finishedCount = totalFinishedProcsMap.getOrDefault(alg, 0L);
+        long busyCycles = totalBusyCyclesMap.getOrDefault(alg, 0L);
+        double totalWait = totalWaitingTimeMap.getOrDefault(alg, 0.0);
+        
+        double utilization = (cycleCount == 0) ? 0 : ((double)busyCycles / cycleCount) * 100.0;
+        double avgWait = (finishedCount == 0) ? 0 : (totalWait / finishedCount);
+        double throughput = (cycleCount == 0) ? 0 : ((double)finishedCount / cycleCount);
+
+        List<Double> waitTimes = finishedWaitTimesMap.get(alg);
+        double stdDev = (waitTimes != null) ? calculateStandardDeviation(waitTimes) : 0.0;
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("--- MÉTRICAS DE RENDIMIENTO ---\n\n");
+        sb.append(String.format("Algoritmo Actual: %s\n", alg.toString()));
+        sb.append(String.format("Ciclo del Sistema: %d\n", cycleCount));
+        sb.append("--------------------------------\n");
+        sb.append(String.format("Procesos Terminados: %d\n", finishedCount));
+        sb.append(String.format("Throughput: %.4f proc/ciclo\n", throughput));
+        sb.append("--------------------------------\n");
+        sb.append(String.format("Ciclos CPU Ocupada: %d\n", busyCycles));
+        sb.append(String.format("Utilización de CPU: %.2f %%\n", utilization));
+        sb.append("--------------------------------\n");
+        sb.append(String.format("T. Espera Total: %.2f ciclos\n", totalWait));
+        sb.append(String.format("T. Espera Promedio: %.2f ciclos\n", avgWait));
+        sb.append(String.format("Equidad (Desv. Est.): %.2f\n", stdDev));
+        
+        metricsTextArea.setText(sb.toString());
+    }
 
     private void refreshNewList() throws InterruptedException {
         if (os == null || os.getNewSem() == null) return;
         
-        os.getNewSem().acquire(); // Bloquear la lista de 'New'
+        os.getNewSem().acquire();
         try {
-            newProcessListPanel.removeAll(); // Limpiar panel visual
+            newProcessListPanel.removeAll();
             
-            // Iterar sobre tu 'List<OS_Process>' personalizada
             for (OS_Structures.OS_Process p : os.getNewProcesses()) {
-                createProcessCard(p, newProcessListPanel);
+                 if (p != null) createProcessCard(p, newProcessListPanel);
             }
             
-            // Revalidar y repintar el panel
             newProcessListPanel.revalidate();
             newProcessListPanel.repaint();
             
         } finally {
-            os.getNewSem().release(); // Liberar la lista
+            os.getNewSem().release();
         }
     }
 
     private void refreshReadyList() throws InterruptedException {
         if (os == null || os.getReadySem() == null) return;
         
-        os.getReadySem().acquire(); // Bloquear las listas 'Ready'
+        os.getReadySem().acquire();
         try {
             readyListPanel.removeAll();
             
-            // Iterar sobre tu 'ReadyList' (que es un Heap de ProcessNode)
             for (Object nodeObj : os.getReadyProcesses()) {
+                 if (nodeObj == null) continue;
                 OS_Structures.ProcessNode node = (OS_Structures.ProcessNode) nodeObj;
-                createProcessCard(node.getElement(), readyListPanel);
+                 if (node.getElement() != null) createProcessCard(node.getElement(), readyListPanel);
             }
             
             readyListPanel.revalidate();
@@ -313,13 +435,14 @@ public class GUI extends javax.swing.JFrame {
     private void refreshReadySuspendedList() throws InterruptedException {
         if (os == null || os.getReadySem() == null) return;
         
-        os.getReadySem().acquire(); // Bloquear las listas 'Ready'
+        os.getReadySem().acquire();
         try {
             readySuspendedListPanel.removeAll();
             
             for (Object nodeObj : os.getReadySuspendedProcesses()) {
+                 if (nodeObj == null) continue;
                 OS_Structures.ProcessNode node = (OS_Structures.ProcessNode) nodeObj;
-                createProcessCard(node.getElement(), readySuspendedListPanel);
+                 if (node.getElement() != null) createProcessCard(node.getElement(), readySuspendedListPanel);
             }
             
             readySuspendedListPanel.revalidate();
@@ -333,15 +456,16 @@ public class GUI extends javax.swing.JFrame {
     private void refreshBlockedList() throws InterruptedException {
         if (os == null || os.getBlockedSem() == null) return;
         
-        os.getBlockedSem().acquire(); // Bloquear las listas 'Blocked'
+        os.getBlockedSem().acquire();
         try {
             blockedListPanel.removeAll();
             
-            // Iterar sobre tu 'HashMap' (usando el método getKeys() que vi en tu código)
             Structures.List<Integer> keys = os.getBlockedProcesses().getKeys();
+             if (keys == null) return;
             for (Integer key : keys) {
+                 if (key == null) continue;
                 OS_Structures.OS_Process p = os.getBlockedProcesses().getValueOfKey(key);
-                createProcessCard(p, blockedListPanel);
+                 if (p != null) createProcessCard(p, blockedListPanel);
             }
             
             blockedListPanel.revalidate();
@@ -355,14 +479,16 @@ public class GUI extends javax.swing.JFrame {
     private void refreshBlockedSuspendedList() throws InterruptedException {
         if (os == null || os.getBlockedSem() == null) return;
         
-        os.getBlockedSem().acquire(); // Bloquear las listas 'Blocked'
+        os.getBlockedSem().acquire();
         try {
             blockedSuspendedListPanel.removeAll();
             
             Structures.List<Integer> keys = os.getBlockedSuspendedProcesses().getKeys();
+            if (keys == null) return;
             for (Integer key : keys) {
+                 if (key == null) continue;
                 OS_Structures.OS_Process p = os.getBlockedSuspendedProcesses().getValueOfKey(key);
-                createProcessCard(p, blockedSuspendedListPanel);
+                 if (p != null) createProcessCard(p, blockedSuspendedListPanel);
             }
             
             blockedSuspendedListPanel.revalidate();
@@ -376,29 +502,86 @@ public class GUI extends javax.swing.JFrame {
     private void refreshFinishedList() {
         if (os == null) return;
         
-        // No necesitamos semáforo para 'Exit' si el OS solo añade
-        // y la GUI solo lee (pero es buena práctica si tuvieras que limpiarla).
+        final Schedule alg = os.getScheduleType();
+        if (alg == null) return;
+        
         finishedListPanel.removeAll();
-        for (OS_Structures.OS_Process p : os.getExitProcesses()) {
+        int currentProcessIndex = 0;
+
+        Iterable<OS_Structures.OS_Process> finishedProcesses = os.getExitProcesses();
+         if (finishedProcesses == null) return;
+
+        for (OS_Structures.OS_Process p : finishedProcesses) {
+             if (p == null) continue;
+            
             createProcessCard(p, finishedListPanel);
+            
+            if (currentProcessIndex >= graphedFinishedProcessCount) {
+                final double waitTime = (p.getTotalTime() - p.getMAR());
+                final long cycle = OperatingSystem.cycleCounter;
+                final long finishedCount = totalFinishedProcsMap.compute(alg, (k, v) -> (v == null ? 0 : v) + 1);
+                final double totalWait = totalWaitingTimeMap.compute(alg, (k, v) -> (v == null ? 0 : v) + waitTime);
+                final double avgWait = (finishedCount == 0) ? 0 : (totalWait / finishedCount);
+                
+                List<Double> waitTimesList = finishedWaitTimesMap.get(alg);
+                if (waitTimesList != null) {
+                    waitTimesList.add(waitTime);
+                    final double stdDevWaitTime = calculateStandardDeviation(waitTimesList);
+                    
+                    XYSeries fairnessSeries = fairnessSeriesMap.get(alg);
+                    if (fairnessSeries != null) {
+                        fairnessSeries.add(finishedCount, stdDevWaitTime);
+                        limitSeriesData(fairnessSeries, 500);
+                    }
+                }
+                
+                XYSeries waitSeries = avgWaitTimeSeriesMap.get(alg);
+                XYSeries tputSeries = throughputSeriesMap.get(alg);
+                
+                if (waitSeries != null) {
+                    waitSeries.add(finishedCount, avgWait);
+                    limitSeriesData(waitSeries, 500);
+                }
+                if (tputSeries != null) {
+                    tputSeries.add(cycle, finishedCount);
+                    limitSeriesData(tputSeries, 500);
+                }
+            }
+            
+            currentProcessIndex++;
         }
+        
+        graphedFinishedProcessCount = currentProcessIndex;
+        
         finishedListPanel.revalidate();
         finishedListPanel.repaint();
     }
     
-    /**
-     * ESTE MÉTODO YA NO ES NECESARIO, PUEDES BORRARLO.
-     * La lógica ahora está en refreshAllQueues().
-     */
-    // public void addNewProcessToView(OS_Process process) { ... }
+    private double calculateStandardDeviation(List<Double> data) {
+        int n = data.size();
+        if (n < 1) {
+            return 0.0;
+        }
 
-    /**
-     * This method is called from within the constructor to initialize the form.
-     * WARNING: Do NOT modify this code. The content of this method is always
-     * regenerated by the Form Editor.
-     */
+        double sum = 0.0;
+        for (double val : data) {
+            sum += val;
+        }
+        double mean = sum / n;
+
+        double sumSquaredDiffs = 0.0;
+        for (double val : data) {
+            sumSquaredDiffs += Math.pow(val - mean, 2);
+        }
+
+        double variance = sumSquaredDiffs / n;
+
+        return Math.sqrt(variance);
+    }
+
+    
     @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
     private void initComponents() {
 
         jTabbedPane1 = new javax.swing.JTabbedPane();
@@ -465,6 +648,7 @@ public class GUI extends javax.swing.JFrame {
         jPanel5 = new javax.swing.JPanel();
         memoryFreeLabel = new javax.swing.JLabel();
         jLabel2 = new javax.swing.JLabel();
+        cpuStatusLabel = new javax.swing.JLabel();
         graphicsPanel = new javax.swing.JPanel();
         logPanel = new javax.swing.JPanel();
         logScrollPane = new javax.swing.JScrollPane();
@@ -649,7 +833,7 @@ public class GUI extends javax.swing.JFrame {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
-        simulatorPanel.add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 600, 410, 120));
+        simulatorPanel.add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 600, 410, 140));
 
         jPanel3.setBackground(new java.awt.Color(225, 225, 225));
         jPanel3.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -949,7 +1133,7 @@ public class GUI extends javax.swing.JFrame {
         jPanel5Layout.setVerticalGroup(
             jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel5Layout.createSequentialGroup()
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addContainerGap()
                 .addGroup(jPanel5Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
                     .addComponent(memoryFreeLabel))
@@ -957,6 +1141,10 @@ public class GUI extends javax.swing.JFrame {
         );
 
         simulatorPanel.add(jPanel5, new org.netbeans.lib.awtextra.AbsoluteConstraints(430, 520, 290, 30));
+
+        cpuStatusLabel.setBackground(new java.awt.Color(0, 0, 0));
+        cpuStatusLabel.setText("KERNEL MODE");
+        simulatorPanel.add(cpuStatusLabel, new org.netbeans.lib.awtextra.AbsoluteConstraints(130, 530, 140, 30));
 
         jTabbedPane1.addTab("Simulador", simulatorPanel);
 
@@ -983,14 +1171,43 @@ public class GUI extends javax.swing.JFrame {
         logTextArea.setRows(5);
         logScrollPane.setViewportView(logTextArea);
 
-        logPanel.add(logScrollPane, java.awt.BorderLayout.CENTER);
+        javax.swing.JSplitPane infoSplitPane = new javax.swing.JSplitPane();
+        infoSplitPane.setOrientation(javax.swing.JSplitPane.HORIZONTAL_SPLIT);
+        infoSplitPane.setResizeWeight(0.6);
+        infoSplitPane.setLeftComponent(logScrollPane);
+        
+        javax.swing.JPanel metricsPanel = new javax.swing.JPanel();
+        metricsPanel.setLayout(new java.awt.BorderLayout());
+        
+        metricsTextArea = new JTextArea("Las métricas de rendimiento aparecerán aquí...");
+        metricsTextArea.setEditable(false);
+        metricsTextArea.setFont(new java.awt.Font("Monospaced", 0, 14));
+        metricsTextArea.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        metricsPanel.add(new JScrollPane(metricsTextArea), java.awt.BorderLayout.CENTER);
+        
+        javax.swing.JPanel saveConfigPanel = new javax.swing.JPanel();
+        saveConfigPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT));
+        
+        javax.swing.JButton saveConfigButton = new javax.swing.JButton();
+        saveConfigButton.setText("Guardar Configuración");
+        saveConfigButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveConfigButtonActionPerformed(evt);
+            }
+        });
+        
+        saveConfigPanel.add(saveConfigButton);
+        metricsPanel.add(saveConfigPanel, java.awt.BorderLayout.SOUTH);
+        
+        infoSplitPane.setRightComponent(metricsPanel);
+        logPanel.add(infoSplitPane, java.awt.BorderLayout.CENTER);
 
-        jTabbedPane1.addTab("Log", logPanel);
+        jTabbedPane1.addTab("Info", logPanel);
 
         getContentPane().add(jTabbedPane1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, -1, -1));
 
         pack();
-    }// </editor-fold>//GEN-END:initComponents
+    }// </editor-fold>                        
 
     private void createProcessButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                  
         try {
@@ -1007,8 +1224,6 @@ public class GUI extends javax.swing.JFrame {
                 return;
             }
             
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // Validar contra la memoria TOTAL del sistema
             if (os != null && pile > os.getMemorySpace()) {
                 JOptionPane.showMessageDialog(this, 
                     "El T. Pila (" + pile + " KB) no puede exceder la memoria total del sistema (" + os.getMemorySpace() + " KB).", 
@@ -1016,9 +1231,7 @@ public class GUI extends javax.swing.JFrame {
                     JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            // --- FIN DE LA MODIFICACIÓN ---
 
-            // Lógica de I/O Bound
             if (isIOBound) {
                 cyclesToCall = Long.parseLong(cyclesToCallField.getText());
                 cyclesToComplete = Long.parseLong(cyclesToCompleteField.getText());
@@ -1028,144 +1241,134 @@ public class GUI extends javax.swing.JFrame {
                     return;
                 }
             }
-            // Si no, cyclesToCall y cyclesToComplete quedan en 0 (CPU-Bound)
+             if (os != null) {
+                 os.createNewProcess(name, priority, pile, cyclesToCall, cyclesToComplete);
+                 addLogMessage("INFO: Proceso '" + name + "' creado manualmente.");
+             } else {
+                 addLogMessage("ERROR: Sistema Operativo no inicializado al intentar crear proceso.");
+             }
 
-            os.createNewProcess(name, priority, pile, cyclesToCall, cyclesToComplete);
 
-            // Limpiar campos
             nameField.setText("");
             pileField.setText("");
             prioritySpinner.setValue(1);
             cyclesToCallField.setText("0");
             cyclesToCompleteField.setText("0");
+            ioBoundCheckBox.setSelected(false);
+            ioBoundCheckBoxActionPerformed(null);
+
 
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Por favor, ingrese valores numéricos válidos para T. Pila y Ciclos.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
+             addLogMessage("ERROR: Formato numérico inválido al crear proceso.");
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error creando proceso: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             logger.log(java.util.logging.Level.SEVERE, "Error en createProcessButtonActionPerformed", e);
+             addLogMessage("ERROR: Creando proceso - " + e.getMessage());
         }
-    }
+    }                                                 
 
     private void create10ProcessButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                    
+         if (os == null) {
+             addLogMessage("ERROR: Sistema Operativo no inicializado al intentar crear 10 procesos.");
+             return;
+         }
         try {
             java.util.Random rand = new java.util.Random();
+            addLogMessage("INFO: Iniciando creación de 10 procesos aleatorios...");
             for (int i = 0; i < 10; i++) {
-                String name = "Proc-" + (os.getProcessIdCounter() + i);
+                String name = "Proc-" + (os.getProcessIdCounter());
                 int priority = rand.nextInt(5) + 1; 
-                long pile = rand.nextLong(os.getMemorySpace());
-
-                // --- Lógica de I/O Bound Aleatoria ---
+                long maxPile = os.getMemorySpace() > 1 ? os.getMemorySpace() / 4 : 1;
+                 if (maxPile <= 0) maxPile = 1;
+                long pile = rand.nextLong(maxPile/2) + 1;
                 long cyclesToCall = 0;
                 long cyclesToComplete = 0;
+                boolean isIO = rand.nextBoolean();
 
-                // 50% de probabilidad de ser I/O-Bound
-                if (rand.nextBoolean()) { 
-                    cyclesToCall = rand.nextInt(100) + 10;     // Ciclos para llamar: 10-110
-                    cyclesToComplete = rand.nextInt(50) + 5; // Ciclos para completar: 5-55
+                if (isIO) { 
+                    cyclesToCall = rand.nextInt(100) + 10;
+                    cyclesToComplete = rand.nextInt(50) + 5;
                 }
-                // Si no entra en el if, los valores quedan en 0 (CPU-Bound)
-                // --- Fin Lógica I/O Bound ---
-
-                // Llamamos a la función actualizada
                 os.createNewProcess(name, priority, pile, cyclesToCall, cyclesToComplete);
             }
+             addLogMessage("INFO: Finalizada creación de 10 procesos aleatorios.");
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error creando 10 procesos: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             logger.log(java.util.logging.Level.SEVERE, "Error en create10ProcessButtonActionPerformed", e);
+             addLogMessage("ERROR: Creando 10 procesos - " + e.getMessage());
         }
-    }
+    }                                                   
 
-    private void setScheduleButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setScheduleButtonActionPerformed
+    private void setScheduleButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                  
         if (this.os == null) {
-            addLogMessage("ERROR: OperatingSystem no está inicializado.");
+            addLogMessage("ERROR: Sistema Operativo no está inicializado. No se puede cambiar el scheduler.");
+            JOptionPane.showMessageDialog(this, "El simulador no está inicializado.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        String selectedSchedule = (String) scheduleComboBox.getSelectedItem();
+        String selectedScheduleStr = (String) scheduleComboBox.getSelectedItem();
+        Schedule selectedSchedule = null;
         long quantumValue = -1;
 
-        if ("RR".equals(selectedSchedule)) {
+         try {
+              switch (selectedScheduleStr) {
+                  case "FIFO": selectedSchedule = Schedule.FIFO; break;
+                  case "RR": selectedSchedule = Schedule.ROUND_ROBIN; break;
+                  case "Priority": selectedSchedule = Schedule.PRIORITY; break;
+                  case "SN": selectedSchedule = Schedule.SHORTEST_NEXT; break;
+                  case "SRT": selectedSchedule = Schedule.SHORTEST_REMAINING_TIME; break;
+                  case "HRR": selectedSchedule = Schedule.HIGHEST_RESPONSE_RATIO; break;
+                  case "FeedBack": selectedSchedule = Schedule.FEEDBACK; break;
+                  default: throw new IllegalArgumentException("Algoritmo desconocido: " + selectedScheduleStr);
+              }
+         } catch (IllegalArgumentException e) {
+             addLogMessage("ERROR: Algoritmo de planificación seleccionado inválido: " + selectedScheduleStr);
+             JOptionPane.showMessageDialog(this, "Algoritmo seleccionado inválido: " + selectedScheduleStr, "Error", JOptionPane.ERROR_MESSAGE);
+             return;
+         }
+
+
+        if (selectedSchedule == Schedule.ROUND_ROBIN || selectedSchedule == Schedule.FEEDBACK) {
             try {
                 quantumValue = Long.parseLong(quantumField.getText().trim());
                 if (quantumValue <= 0) {
                     JOptionPane.showMessageDialog(this, "El Quantum debe ser un número positivo.", "Quantum Inválido", JOptionPane.WARNING_MESSAGE);
-                    quantumField.setText("100");
-                    return;
+                    return; 
                 }
-                addLogMessage("--> Quantum para Round Robin establecido en: " + quantumValue + " ms");
+                
             } catch (NumberFormatException e) {
                 JOptionPane.showMessageDialog(this, "Por favor, ingrese un número válido para el Quantum.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
-                quantumField.setText("100");
                 return;
             }
         }
+        os.setSchedule(selectedSchedule);
+        if (quantumValue > 0) {
+            os.setQuantum(quantumValue);
+        }
+        currentScheduleValueLabel.setText(selectedScheduleStr + (quantumValue > 0 ? " (Q=" + quantumValue + ")" : ""));
+        String logMsg = "--> Algoritmo de planificación cambiado a: " + selectedScheduleStr;
+        if (quantumValue > 0) {
+            logMsg += " con Quantum=" + quantumValue;
+        }
+        addLogMessage(logMsg);
 
-        currentScheduleValueLabel.setText(selectedSchedule + (quantumValue > 0 ? " (Q=" + quantumValue + ")" : ""));
-    }//GEN-LAST:event_setScheduleButtonActionPerformed
+    }                                                 
 
     private void scheduleComboBoxActionPerformed(java.awt.event.ActionEvent evt) {                                                 
-        // 1. Obtener el schedule seleccionado del ComboBox
-        OS_Structures.Schedule selectedSchedule;
         String selection = (String) scheduleComboBox.getSelectedItem();
-
-        // 2. Convertir el String a la enumeración
-        switch (selection) {
-            case "FIFO":
-                selectedSchedule = OS_Structures.Schedule.FIFO;
-                break;
-            
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Asegúrate de que este texto coincida 100% con el JComboBox
-            case "Round Robin": 
-            // (Si en tu ComboBox dice "RR", cambia esta línea a: case "RR":)
-                selectedSchedule = OS_Structures.Schedule.ROUND_ROBIN;
-                break;
-            // --- FIN DE LA CORRECCIÓN ---
-                
-            case "Priority":
-                selectedSchedule = OS_Structures.Schedule.PRIORITY;
-                break;
-            case "Shortest Next":
-                selectedSchedule = OS_Structures.Schedule.SHORTEST_NEXT;
-                break;
-            case "Shortest Remaining":
-                selectedSchedule = OS_Structures.Schedule.SHORTEST_REMAINING_TIME;
-                break;
-            case "Highest Response Ratio":
-                selectedSchedule = OS_Structures.Schedule.HIGHEST_RESPONSE_RATIO;
-                break;
-            case "Feedback":
-                selectedSchedule = OS_Structures.Schedule.FEEDBACK;
-                break;
-            default:
-                selectedSchedule = OS_Structures.Schedule.PRIORITY; // Fallback
-        }
-
-        // 3. Lógica para mostrar/ocultar el Quantum
-        boolean isRoundRobin = (selectedSchedule == OS_Structures.Schedule.ROUND_ROBIN);
-        quantumLabel.setVisible(isRoundRobin);
-        quantumField.setVisible(isRoundRobin);
-
-        // 4. Llamar a los setters del Sistema Operativo
-        if (os != null) {
-            os.setSchedule(selectedSchedule);
-            
-            if (isRoundRobin) {
-                try {
-                    long quantum = Long.parseLong(quantumField.getText());
-                    if (quantum > 0) {
-                        os.setQuantum(quantum);
-                    }
-                } catch (NumberFormatException e) {
-                    // Si el campo está vacío (ej. "1"), pone 1 por defecto
-                    quantumField.setText("1");
-                    os.setQuantum(1);
-                }
-            }
-        }
-    }
-    private void setDurationButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_setDurationButtonActionPerformed
+        
+        boolean isQuantumVisible = "RR".equals(selection) || "FeedBack".equals(selection); 
+        
+        quantumLabel.setVisible(isQuantumVisible);
+        quantumField.setVisible(isQuantumVisible);
+        
+        jPanel2.revalidate();
+        jPanel2.repaint();
+    }                                                
+    
+    
+    private void setDurationButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                  
         if (this.os == null) {
             addLogMessage("ERROR: OperatingSystem no está inicializado.");
             return;
@@ -1178,7 +1381,6 @@ public class GUI extends javax.swing.JFrame {
             if (value <= 0) {
                 JOptionPane.showMessageDialog(this, "El valor debe ser positivo.", "Error de entrada", JOptionPane.WARNING_MESSAGE);
                 durationField.setText("1");
-                addLogMessage("ERROR: El valor de duración debe ser positivo.");
                 return;
             }
 
@@ -1186,67 +1388,108 @@ public class GUI extends javax.swing.JFrame {
 
             long durationInMs = "Segundos".equals(unit) ? value * 1000 : value;
             currentDurationValueLabel.setText(durationInMs + " ms");
+            addLogMessage("--> Duración del ciclo establecida en: " + value + " " + unit + " (" + durationInMs + " ms).");
+
 
         } catch (NumberFormatException e) {
-            addLogMessage("ERROR: Entrada inválida. Se requiere un número entero.");
+            addLogMessage("ERROR: Entrada inválida para duración. Se requiere un número entero.");
             JOptionPane.showMessageDialog(this, "Por favor, ingrese un número válido.", "Error de formato", JOptionPane.ERROR_MESSAGE);
             durationField.setText("1");
         }
-    }//GEN-LAST:event_setDurationButtonActionPerformed
+    }                                                 
 
-    private void unitComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_unitComboBoxActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_unitComboBoxActionPerformed
+    private void unitComboBoxActionPerformed(java.awt.event.ActionEvent evt) {                                             
+    }                                            
 
-    private void jTabbedPane1HierarchyChanged(java.awt.event.HierarchyEvent evt) {//GEN-FIRST:event_jTabbedPane1HierarchyChanged
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jTabbedPane1HierarchyChanged
+    private void jTabbedPane1HierarchyChanged(java.awt.event.HierarchyEvent evt) {                                              
+    }                                             
 
-    private void ioBoundCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ioBoundCheckBoxActionPerformed
+    private void ioBoundCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {                                                
         boolean isIOBound = ioBoundCheckBox.isSelected();
 
-            // Habilitar o deshabilitar los componentes
             cyclesToCallField.setEnabled(isIOBound);
             cyclesToCompleteField.setEnabled(isIOBound);
             cyclesToCallLabel.setEnabled(isIOBound);
             cyclesToCompleteLabel.setEnabled(isIOBound);
 
-            // Si se deshabilita (vuelve a CPU-Bound), limpiar los campos a 0
             if (!isIOBound) {
                 cyclesToCallField.setText("0");
                 cyclesToCompleteField.setText("0");
             }
-    }//GEN-LAST:event_ioBoundCheckBoxActionPerformed
+    }                                               
 
-    private void quantumFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_quantumFieldActionPerformed
-        try {
-            long newQuantum = Long.parseLong(quantumField.getText());
-            
-            // Validar que el quantum sea positivo
-            if (newQuantum > 0 && os != null) {
-                // Llamar solo al setter del quantum
-                os.setQuantum(newQuantum);
-                JOptionPane.showMessageDialog(this, "Quantum actualizado a " + newQuantum, "Aviso", JOptionPane.INFORMATION_MESSAGE);
-            } else if (newQuantum <= 0) {
-                JOptionPane.showMessageDialog(this, "El Quantum debe ser positivo.", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-            
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Por favor, ingrese un número válido para el Quantum.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
-        }
-    }//GEN-LAST:event_quantumFieldActionPerformed
+    private void quantumFieldActionPerformed(java.awt.event.ActionEvent evt) {                                             
+         setScheduleButtonActionPerformed(null);
+    }                                            
+    
+     private void resetChartDataAndMetrics() {
+         SwingUtilities.invokeLater(() -> {
+             for (XYSeries series : throughputSeriesMap.values()) {
+                 series.clear();
+             }
+             for (XYSeries series : cpuUtilizationSeriesMap.values()) {
+                 series.clear();
+             }
+             for (XYSeries series : avgWaitTimeSeriesMap.values()) {
+                 series.clear();
+             }
+             for (XYSeries series : fairnessSeriesMap.values()) {
+                 series.clear();
+             }
 
-                                                  
+             for (Schedule alg : Schedule.values()) {
+                 totalBusyCyclesMap.put(alg, 0L);
+                 totalWaitingTimeMap.put(alg, 0.0);
+                 totalFinishedProcsMap.put(alg, 0L);
+                 List<Double> waitTimes = finishedWaitTimesMap.get(alg);
+                 if (waitTimes != null) {
+                     waitTimes.clear();
+                 }
+             }
+
+             graphedFinishedProcessCount = 0;
+             
+             addLogMessage("INFO: Datos de gráficos y métricas reiniciados.");
+         });
+     }
    
-    /**
-     * @param args the command line arguments
-     */
+    private void saveConfigButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                 
+        if (os == null) {
+            addLogMessage("ERROR: Sistema Operativo no inicializado.");
+            JOptionPane.showMessageDialog(this, "El simulador no está inicializado.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        String configName = JOptionPane.showInputDialog(this,
+                "Ingrese un nombre para la configuración (se guardará como .csv):",
+                "Guardar Configuración",
+                JOptionPane.PLAIN_MESSAGE);
+
+        if (configName != null && !configName.trim().isEmpty()) {
+            try {
+                os.saveCurrentConfiguration(configName);
+                addLogMessage("INFO: Configuración '" + configName + "' guardada exitosamente.");
+                JOptionPane.showMessageDialog(this,
+                        "Configuración guardada como '" + (configName.endsWith(".csv") ? configName : configName + ".csv"),
+                        "Éxito",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception e) {
+                addLogMessage("ERROR: No se pudo guardar la configuración. " + e.getMessage());
+                JOptionPane.showMessageDialog(this,
+                        "Error al guardar la configuración: " + e.getMessage(),
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (configName != null) {
+            JOptionPane.showMessageDialog(this,
+                    "El nombre no puede estar vacío.",
+                    "Error de Validación",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+    }
+     
+     
     public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
         try {
             for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
                 if ("Nimbus".equals(info.getName())) {
@@ -1263,20 +1506,18 @@ public class GUI extends javax.swing.JFrame {
         } catch (javax.swing.UnsupportedLookAndFeelException ex) {
             java.util.logging.Logger.getLogger(GUI.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
         }
-        //</editor-fold>
-
-        /* Create and display the form */
         java.awt.EventQueue.invokeLater(() -> new GUI().setVisible(true));
 
     }
 
-    // Variables declaration - do not modify//GEN-BEGIN:variables
+    // Variables declaration - do not modify                     
     private javax.swing.JLabel blockedLabel;
     private javax.swing.JPanel blockedListPanel;
     private javax.swing.JScrollPane blockedScrollPane;
     private javax.swing.JLabel blockedSuspendedLabel;
     private javax.swing.JPanel blockedSuspendedListPanel;
     private javax.swing.JScrollPane blockedSuspendedScrollPane;
+    private javax.swing.JLabel cpuStatusLabel;
     private javax.swing.JButton create10ProcessButton;
     private javax.swing.JButton createProcessButton;
     private javax.swing.JLabel currentDurationLabel;
@@ -1339,7 +1580,7 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.JButton setScheduleButton;
     private javax.swing.JPanel simulatorPanel;
     private javax.swing.JComboBox<String> unitComboBox;
-    // End of variables declaration//GEN-END:variables
+    // End of variables declaration                   
 
     class MousePanListener extends MouseAdapter {
 
