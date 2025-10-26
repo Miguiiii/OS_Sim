@@ -23,16 +23,6 @@ public class OS_Process {
     private long totalTimeInOS = 0;
     private int timesPreempted = 0;
     
-    /**
-     * Constructor for an IO Bound Process
-     * @param name Name of the Process
-     * @param id Id of the Process
-     * @param priority Priority  of the Process
-     * @param pile Number of Instructios of the Process
-     * @param birthTime Cycle number in which the Process was created
-     * @param cyclesToCallException Number of Cycles for the Process to call for an IO operation
-     * @param cyclesToCompleteException Number of Cycles for an IO operation of this process to be completed
-     */
     public OS_Process(String name, int id, int priority, long pile, long birthTime, long cyclesToCallException, long cyclesToCompleteException) {
         this.name = name;
         this.id = id;
@@ -43,47 +33,25 @@ public class OS_Process {
         this.cyclesToCompleteException = cyclesToCompleteException;
     }
     
-    /**
-     * Constructor for a CPU Bound Process
-     * cyclesToCallException and cyclesToCompleteException are set to 0
-     * @param name Name of the Process
-     * @param id Id of the Process
-     * @param priority Priority  of the Process
-     * @param pile Number of Instructios of the Process
-     * @param birthTime Cycle number in which the Process was created
-     */
     public OS_Process(String name, int id, int priority, long pile, long birthTime) {
         this(name, id, priority, pile, birthTime, 0, 0);
     }
 
-    /**
-     * Returns the Name of the process given to it upon creation
-     * @return {@code String} name of the process
-     */
+
     public String getName() {
         return name;
     }
 
-    /**
-     * Returns the Id of the process given to it upon creation
-     * @return {@code int} Id of the process
-     */
+ 
     public int getId() {
         return id;
     }
 
-    /**
-     * Returns the Priority of the process given to it upon creation
-     * @return {@code int} prioriy of the process
-     */
+
     public int getPriority() {
         return priority;
     }
 
-    /**
-     * Returns the Cycle of the OS simulation in which this process was created
-     * @return {@code long} cycle of birth of the process
-     */
     public long getBirthTime() {
         return birthTime;
     }
