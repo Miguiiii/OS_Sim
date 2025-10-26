@@ -29,12 +29,15 @@ public class ProcessNode{
         return getPriority(getPriorityType());
     }
     
+    /*
+    * Calculos de Prioridades obtenidos del capítulo 9 del libro Operating Systems de William Stallings
+    */
     public long getPriority(Schedule schedule) {
         return switch (schedule) {
-            case Schedule.FIFO, Schedule.ROUND_ROBIN -> OperatingSystem.cycleCounter - this.cycleQueued;
-            case Schedule.SHORTEST_NEXT -> getElement().getPile();
-            case Schedule.SHORTEST_REMAINING_TIME -> getElement().getPile()-getElement().getMAR();
-            case Schedule.HIGHEST_RESPONSE_RATIO -> ((OperatingSystem.cycleCounter - this.cycleQueued)/getElement().getPile())+1;
+            case Schedule.FIFO, Schedule.ROUND_ROBIN -> OperatingSystem.cycleCounter - this.cycleQueued; //Tiempo en espera
+            case Schedule.SHORTEST_NEXT -> getElement().getPile(); //Tamaño de pila
+            case Schedule.SHORTEST_REMAINING_TIME -> getElement().getPile()-getElement().getMAR(); //Tamaño de la pila restante
+            case Schedule.HIGHEST_RESPONSE_RATIO -> ((OperatingSystem.cycleCounter - this.cycleQueued)/getElement().getPile())+1; //(Tiempo en espera)/(Tamaño de Pila)+1
             case Schedule.FEEDBACK -> getElement().getTimesPreempted();
             case Schedule.PRIORITY -> getElement().getPriority();
             default -> getElement().getPriority();
