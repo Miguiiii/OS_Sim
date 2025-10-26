@@ -13,8 +13,7 @@ public class ProcessNode{
     private OS_Process element;
     public static Schedule schedule = Schedule.PRIORITY;
     private long cycleQueued;
-    
-    //private long cicleCounter=561132421; //PLACEHOLDER FOR THE GLOBAL CICLECOUNTER FOR TESTS PURPOSES
+
     
     public ProcessNode(OS_Process element) {
         this.element = element;

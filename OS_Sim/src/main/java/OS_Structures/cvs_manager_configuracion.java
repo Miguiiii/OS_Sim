@@ -11,20 +11,19 @@ import java.io.PrintWriter;
  * @author vince
  */
 public class cvs_manager_configuracion {
-
-    private static final String CSV_HEADER = "Schedule,MemorySpace,CycleDuration,Unit";
-
+    private static final String CSV_HEADER = "Schedule,MemorySpace,CycleDuration,Unit,Quantum";
     public cvs_manager_configuracion() {
     }
 
-    public void guardarConfiguracion(String filePath, String schedule, long memorySpace, long cycleDuration, String unit) {
+    public void guardarConfiguracion(String filePath, String schedule, long memorySpace, long cycleDuration, String unit, long quantum) {
         try (PrintWriter pw = new PrintWriter(new FileWriter(filePath))) {
             pw.println(CSV_HEADER);
             String configData = String.join(",",
                     schedule,
                     String.valueOf(memorySpace),
                     String.valueOf(cycleDuration),
-                    unit
+                    unit,
+                    String.valueOf(quantum) 
             );
             pw.println(configData);
         } catch (IOException e) {
@@ -44,7 +43,7 @@ public class cvs_manager_configuracion {
 
             String line = reader.readLine();
             if (line != null && !line.trim().isEmpty()) {
-                return line.split(",");
+                return line.split(","); 
             }
         } catch (IOException e) {
             System.err.println("Error al leer el archivo de configuración CSV: " + e.getMessage());

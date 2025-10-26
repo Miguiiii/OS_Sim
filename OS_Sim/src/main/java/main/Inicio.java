@@ -1,8 +1,5 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JPanel.java to edit this template
- */
 package main;
+
 import OS_Structures.cvs_manager_configuracion;
 import java.io.File;
 import javax.swing.JFileChooser;
@@ -15,37 +12,60 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  */
 public class Inicio extends javax.swing.JDialog {
 
-    private long memorySpace;
-    private long cycleDuration;
-    private String unit;
-    private String schedule;
     private boolean started = false;
-    private cvs_manager_configuracion configLoader;
 
     public Inicio(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
-        setTitle("Configuración Inicial");
-        setPreferredSize(new java.awt.Dimension(350, 300));
-        this.configLoader = new cvs_manager_configuracion();
-        pack(); 
-    }
-    
-    public Inicio() {
-        this(null, true);
+        this.setLocationRelativeTo(parent); 
+        scheduleComboBoxActionPerformed(null);
     }
 
-    public long getMemorySpace() { return memorySpace; }
-    public long getCycleDuration() { return cycleDuration; }
-    public String getUnit() { return unit; }
-    public String getSchedule() { return schedule; }
-    public boolean isStarted() { return started; }
-    
+    public boolean isStarted() {
+        return started;
+    }
 
+    public long getMemorySpace() {
+        return Long.parseLong(memoryField.getText());
+    }
+
+    public long getCycleDuration() {
+        return Long.parseLong(durationField.getText());
+    }
+
+    public String getUnit() {
+        return (String) unitComboBox.getSelectedItem();
+    }
+    
+    public String getSchedule() {
+        return (String) scheduleComboBox.getSelectedItem();
+    }
+    
+    public long getQuantum() {
+        try {
+            long quantum = Long.parseLong(quantumField.getText());
+            return quantum > 0 ? quantum : 100; 
+        } catch (NumberFormatException e) {
+            return 100;
+        }
+    }
+
+    private String getScheduleDisplayNameFromEnum(String enumName) {
+        if (enumName == null) return "Priority"; // Fallback seguro
+        switch (enumName.toUpperCase()) {
+            case "ROUND_ROBIN": return "RR";
+            case "SHORTEST_NEXT": return "SN";
+            case "SHORTEST_REMAINING_TIME": return "SRT";
+            case "HIGHEST_RESPONSE_RATIO": return "HRR";
+            case "FEEDBACK": return "FeedBack";
+            case "PRIORITY": return "Priority";
+            case "FIFO": return "FIFO";
+            default: return "Priority"; 
+        }
+    }
     @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
     private void initComponents() {
-        java.awt.GridBagConstraints gridBagConstraints;
 
         mainPanel = new javax.swing.JPanel();
         memoryLabel = new javax.swing.JLabel();
@@ -55,86 +75,88 @@ public class Inicio extends javax.swing.JDialog {
         unitComboBox = new javax.swing.JComboBox<>();
         scheduleLabel = new javax.swing.JLabel();
         scheduleComboBox = new javax.swing.JComboBox<>();
+        quantumLabel = new javax.swing.JLabel();
+        quantumField = new javax.swing.JTextField();
         buttonPanel = new javax.swing.JPanel();
         loadConfigButton = new javax.swing.JButton();
         startButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setTitle("Configuración Inicial del Simulador");
 
-        mainPanel.setLayout(new java.awt.GridBagLayout());
+        memoryLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        memoryLabel.setText("Espacio de Memoria (KB):");
 
-        memoryLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        memoryLabel.setText("Espacio de Memoria:");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 0;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(memoryLabel, gridBagConstraints);
+        memoryField.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        memoryField.setText("10240");
 
-        memoryField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
-        memoryField.setText("1024");
-        memoryField.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                memoryFieldActionPerformed(evt);
-            }
-        });
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 1;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(memoryField, gridBagConstraints);
-
-        durationLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+        durationLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         durationLabel.setText("Duración del Ciclo:");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 2;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(durationLabel, gridBagConstraints);
 
-        durationField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+        durationField.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         durationField.setText("1");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 3;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.weightx = 0.5;
-        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(durationField, gridBagConstraints);
 
         unitComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Segundos", "Milisegundos" }));
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 1;
-        gridBagConstraints.gridy = 3;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.weightx = 0.5;
-        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(unitComboBox, gridBagConstraints);
 
-        scheduleLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        scheduleLabel.setText("Algoritmo de Planificación:");
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 4;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(scheduleLabel, gridBagConstraints);
+        scheduleLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        scheduleLabel.setText("Algoritmo de Planificación Inicial:");
 
         scheduleComboBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Priority", "FIFO", "RR", "SN", "SRT", "HRR", "FeedBack" }));
-        gridBagConstraints = new java.awt.GridBagConstraints();
-        gridBagConstraints.gridx = 0;
-        gridBagConstraints.gridy = 5;
-        gridBagConstraints.gridwidth = 2;
-        gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
-        gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
-        mainPanel.add(scheduleComboBox, gridBagConstraints);
+        scheduleComboBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                scheduleComboBoxActionPerformed(evt);
+            }
+        });
+
+        quantumLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        quantumLabel.setText("Quantum (para RR / FeedBack):");
+
+        quantumField.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        quantumField.setText("100");
+
+        javax.swing.GroupLayout mainPanelLayout = new javax.swing.GroupLayout(mainPanel);
+        mainPanel.setLayout(mainPanelLayout);
+        mainPanelLayout.setHorizontalGroup(
+            mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(mainPanelLayout.createSequentialGroup()
+                .addGap(25, 25, 25)
+                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(quantumField)
+                    .addComponent(quantumLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(scheduleComboBox, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(scheduleLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(mainPanelLayout.createSequentialGroup()
+                        .addComponent(durationField, javax.swing.GroupLayout.PREFERRED_SIZE, 120, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(unitComboBox, 0, 163, Short.MAX_VALUE))
+                    .addComponent(durationLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(memoryField)
+                    .addComponent(memoryLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(25, Short.MAX_VALUE))
+        );
+        mainPanelLayout.setVerticalGroup(
+            mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(mainPanelLayout.createSequentialGroup()
+                .addGap(25, 25, 25)
+                .addComponent(memoryLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(memoryField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(durationLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(mainPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(durationField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(unitComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
+                .addComponent(scheduleLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(scheduleComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(quantumLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(quantumField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(25, Short.MAX_VALUE))
+        );
 
         getContentPane().add(mainPanel, java.awt.BorderLayout.CENTER);
 
@@ -157,65 +179,76 @@ public class Inicio extends javax.swing.JDialog {
         getContentPane().add(buttonPanel, java.awt.BorderLayout.SOUTH);
 
         pack();
-    }// </editor-fold>//GEN-END:initComponents
+    }// </editor-fold>                        
 
-    private void memoryFieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_memoryFieldActionPerformed
-
-    }//GEN-LAST:event_memoryFieldActionPerformed
-
-    private void startButtonActionPerformed(java.awt.event.ActionEvent evt) {
+    private void startButtonActionPerformed(java.awt.event.ActionEvent evt) {                                            
         try {
             long mem = Long.parseLong(memoryField.getText());
             long dur = Long.parseLong(durationField.getText());
-            String u = (String) unitComboBox.getSelectedItem();
-            String s = (String) scheduleComboBox.getSelectedItem();
             if (mem <= 0 || dur <= 0) {
-                 JOptionPane.showMessageDialog(this, 
-                    "Los valores deben ser positivos.", "Error de entrada", 
-                    JOptionPane.WARNING_MESSAGE);
-                 return;
+                JOptionPane.showMessageDialog(this, "Los valores de memoria y duración deben ser positivos.", "Error de Validación", JOptionPane.ERROR_MESSAGE);
+                return;
             }
-
-            this.memorySpace = mem;
-            this.cycleDuration = dur;
-            this.unit = u;
-            this.schedule = s;
+            if ("RR".equals(getSchedule()) || "FeedBack".equals(getSchedule())) {
+                 long quant = Long.parseLong(quantumField.getText());
+                 if (quant <= 0) {
+                     JOptionPane.showMessageDialog(this, "El Quantum debe ser un número positivo.", "Error de Validación", JOptionPane.ERROR_MESSAGE);
+                     return;
+                 }
+            }
             this.started = true;
-            this.dispose(); 
-
+            this.dispose();
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, 
-                "Por favor, ingrese números válidos.", "Error de formato", 
-                JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Por favor, ingrese valores numéricos válidos.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
         }
-    }
+    }                                           
+
+    private void scheduleComboBoxActionPerformed(java.awt.event.ActionEvent evt) {                                                 
+        String selection = (String) scheduleComboBox.getSelectedItem();
+        boolean isQuantumVisible = "RR".equals(selection) || "FeedBack".equals(selection);
+        quantumLabel.setVisible(isQuantumVisible);
+        quantumField.setVisible(isQuantumVisible);
+        this.pack();
+    }                                                
 
     private void loadConfigButtonActionPerformed(java.awt.event.ActionEvent evt) {                                                 
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setDialogTitle("Seleccionar archivo de configuración");
-        fileChooser.setCurrentDirectory(new File(".")); // Directorio actual
+        JFileChooser fileChooser = new JFileChooser(System.getProperty("user.dir"));
+        fileChooser.setDialogTitle("Seleccionar archivo de configuración CSV");
         fileChooser.setFileFilter(new FileNameExtensionFilter("Archivos CSV", "csv"));
 
         int userSelection = fileChooser.showOpenDialog(this);
 
         if (userSelection == JFileChooser.APPROVE_OPTION) {
             File fileToLoad = fileChooser.getSelectedFile();
-            String[] config = configLoader.cargarConfiguracion(fileToLoad.getAbsolutePath());
+            cvs_manager_configuracion configManager = new cvs_manager_configuracion();
+            String[] configData = configManager.cargarConfiguracion(fileToLoad.getAbsolutePath());
 
-            if (config != null && config.length == 4) {
-                scheduleComboBox.setSelectedItem(config[0]);
-                memoryField.setText(config[1]);
-                durationField.setText(config[2]);
-                unitComboBox.setSelectedItem(config[3]);
-                JOptionPane.showMessageDialog(this, "Configuración cargada desde '" + fileToLoad.getName() + "'", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            if (configData != null && configData.length >= 5) {
+                try {
+                    String scheduleEnumName = configData[0];
+                    String memory = configData[1];
+                    String duration = configData[2];
+                    String unit = configData[3];
+                    String quantum = configData[4];
+                    String scheduleDisplayName = getScheduleDisplayNameFromEnum(scheduleEnumName);
+                    scheduleComboBox.setSelectedItem(scheduleDisplayName);
+                    memoryField.setText(memory);
+                    durationField.setText(duration);
+                    unitComboBox.setSelectedItem(unit);
+                    quantumField.setText(quantum);
+                    scheduleComboBoxActionPerformed(null);
+
+                    JOptionPane.showMessageDialog(this, "Configuración cargada exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(this, "El archivo de configuración parece estar dañado o malformado.\nError: " + e.getMessage(), "Error de Lectura", JOptionPane.ERROR_MESSAGE);
+                }
             } else {
-                JOptionPane.showMessageDialog(this, "El archivo seleccionado no es una configuración válida.", "Error de Carga", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "No se pudo cargar la configuración del archivo. Verifique que el formato sea correcto.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
-    }
-    
-    
-    // Variables declaration - do not modify//GEN-BEGIN:variables
+    }                                                
+             
     private javax.swing.JPanel buttonPanel;
     private javax.swing.JTextField durationField;
     private javax.swing.JLabel durationLabel;
@@ -223,9 +256,10 @@ public class Inicio extends javax.swing.JDialog {
     private javax.swing.JPanel mainPanel;
     private javax.swing.JTextField memoryField;
     private javax.swing.JLabel memoryLabel;
+    private javax.swing.JTextField quantumField;
+    private javax.swing.JLabel quantumLabel;
     private javax.swing.JComboBox<String> scheduleComboBox;
     private javax.swing.JLabel scheduleLabel;
     private javax.swing.JButton startButton;
-    private javax.swing.JComboBox<String> unitComboBox;
-    // End of variables declaration//GEN-END:variables
+    private javax.swing.JComboBox<String> unitComboBox;         
 }
