@@ -228,46 +228,50 @@ public class OperatingSystem {
     }
     
     public void startSystem() {
-        this.counterThread = new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(this.cycleDuration);
-                    cycleCounter++;
-                    ventana.updateCycleCount(cycleCounter);
-                    
-                    if (!this.isInKernel && programCounter > 0) {
-                        programCounter--;                    
-                        OS_Process tempProcess = runningProcess; 
-                        if (tempProcess != null) {
-                            tempProcess.runInstruction(); 
-                        }
-                    }
+      this.counterThread = new Thread(() -> {
+          while (true) {
+              try {
+                  Thread.sleep(this.cycleDuration);
+                  cycleCounter++;
+                  ventana.updateCycleCount(cycleCounter);
 
-                } catch (InterruptedException e) {
-                    ventana.addLogMessage("---> Ciclo interrumpido para aplicar nueva duración.");
-                }
-            }
-        });
-        this.counterThread.setDaemon(true); 
-        this.counterThread.start();
-        ventana.setVisible(true);
-        ventana.addLogMessage("Sistema iniciado. Espacio de memoria total: " + this.memorySpace + " KB.");
-        ventana.addLogMessage("Algoritmo de planificación: " + this.schedule);
-        
-        long initialValue;
-        String initialUnit;
-        if (this.isCycleInSeconds) {
-            initialValue = this.cycleDuration / 1000;
-            initialUnit = "Segundos";
-        } else {
-            initialValue = this.cycleDuration;
-            initialUnit = "Milisegundos";
-        }
-        
-        ventana.setInitialDuration(initialValue, initialUnit);
-        ventana.setInitialQuantum(this.getQuantum());
-        ventana.setInitialSchedule(this.getScheduleDisplayName(this.schedule));
-    }
+                  if (ventana != null) {
+                      ventana.refreshProcessMetrics(); 
+                  }
+
+                  if (!this.isInKernel && programCounter > 0) {
+                      programCounter--;                    
+                      OS_Process tempProcess = runningProcess; 
+                      if (tempProcess != null) {
+                          tempProcess.runInstruction(); 
+                      }
+                  }
+
+              } catch (InterruptedException e) {
+                  ventana.addLogMessage("---> Ciclo interrumpido para aplicar nueva duración.");
+              }
+          }
+      });
+      this.counterThread.setDaemon(true); 
+      this.counterThread.start();
+      ventana.setVisible(true);
+      ventana.addLogMessage("Sistema iniciado. Espacio de memoria total: " + this.memorySpace + " KB.");
+      ventana.addLogMessage("Algoritmo de planificación: " + this.schedule);
+
+      long initialValue;
+      String initialUnit;
+      if (this.isCycleInSeconds) {
+          initialValue = this.cycleDuration / 1000;
+          initialUnit = "Segundos";
+      } else {
+          initialValue = this.cycleDuration;
+          initialUnit = "Milisegundos";
+      }
+
+      ventana.setInitialDuration(initialValue, initialUnit);
+      ventana.setInitialQuantum(this.getQuantum());
+      ventana.setInitialSchedule(this.getScheduleDisplayName(this.schedule));
+  }
 
     private String getScheduleDisplayName(Schedule schedule) {
         switch (schedule) {
